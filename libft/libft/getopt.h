@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/02/07 01:30:07 by reclaire          #+#    #+#             */
-/*   Updated: 2024/08/27 18:07:27 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/09 17:08:34 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,6 +42,6 @@ typedef struct s_long_opt
 } t_long_opt;
 
 S32 ft_getopt(S32 argc, const_string *argv, const_string optstr);
-S32 ft_getopt_long(S32 argc, const_string *argv, const_string optstr, t_long_opt *longopts, S32 *longopts_index);
+S32 ft_getopt_long(S32 argc, const_string *argv, const_string optstr, const t_long_opt *longopts, S32 *longopts_index);
 
 #endif

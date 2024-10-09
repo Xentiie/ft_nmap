@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/02/07 14:44:13 by reclaire          #+#    #+#             */
-/*   Updated: 2024/08/27 18:08:04 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/09 17:08:28 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -79,7 +79,7 @@ static void pushback_arg(S32 start, S32 end, const_string *argv, int argc)
 #endif
 }
 
-S32 ft_getopt_long(S32 argc, const_string *argv, const_string optstr, t_long_opt *longopts, S32 *longopts_index)
+S32 ft_getopt_long(S32 argc, const_string *argv, const_string optstr, const t_long_opt *longopts, S32 *longopts_index)
 {
 	(void)optstr;
 

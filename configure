@@ -68,8 +68,8 @@ CC_LINUX=gcc
 RM="rm -rf"
 CFLAGS="-Wall -Wextra -Wno-unknown-pragmas"
 INCLUDES=
-LIBS_PATHS=
-LIBS=
+LIBS_PATHS="-L./libft"
+LIBS="-lft -lm"
 
 if [[ "$COVERAGE" == "true" ]]; then
 	CFLAGS="$CFLAGS -fprofile-arcs -ftest-coverage -O0"
