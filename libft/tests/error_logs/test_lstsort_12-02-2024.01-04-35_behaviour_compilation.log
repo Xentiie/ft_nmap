@@ -1,0 +1,25 @@
+====BEGIN LOG====
+Code: 1
+=================
+
+=================
+main_behaviour.c: In function ‘create_behaviour_tests’:
+main_behaviour.c:27:9: error: too few arguments to function ‘strerror’
+   27 |         strerror();
+      |         ^~~~~~~~
+In file included from main_behaviour.c:17:
+/usr/include/string.h:419:14: note: declared here
+  419 | extern char *strerror (int __errnum) __THROW;
+      |              ^~~~~~~~
+main_behaviour.c: In function ‘read_stdout_redirect’:
+main_behaviour.c:110:42: warning: passing argument 2 of ‘ft_fread’ from incompatible pointer type [-Wincompatible-pointer-types]
+  110 |         while ((br = ft_fread(pipefd[0], buf, sizeof(char) * 4095)) > 0)
+      |                                          ^~~
+      |                                          |
+      |                                          char **
+In file included from libft_tests.h:28,
+                 from main_behaviour.c:13:
+../libft/io.h:62:49: note: expected ‘char *’ but argument is of type ‘char **’
+   62 | extern U64              ft_fread(file fd, char *buffer, U64 size);
+      |                                           ~~~~~~^~~~~~
+

@@ -1,0 +1,11 @@
+====BEGIN LOG====
+Code: 0
+=================
+TESTS INIT
+FUNCTION BEHAVIOUR TESTS
+original: c f g e 2 a d 1 b 
+sorted:   c f g e 2 a d 1 b 
+    -> ft_sort string: FAILED
+
+=================
+

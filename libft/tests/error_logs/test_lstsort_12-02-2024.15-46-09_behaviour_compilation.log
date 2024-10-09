@@ -1,0 +1,22 @@
+====BEGIN LOG====
+Code: 1
+=================
+
+=================
+main_behaviour.c: In function ‘read_stdout_redirect’:
+main_behaviour.c:109:42: warning: passing argument 2 of ‘ft_fread’ from incompatible pointer type [-Wincompatible-pointer-types]
+  109 |         while ((br = ft_fread(pipefd[0], buf, sizeof(char) * 4095)) > 0)
+      |                                          ^~~
+      |                                          |
+      |                                          char **
+In file included from libft_tests.h:28,
+                 from main_behaviour.c:13:
+../libft/io.h:62:49: note: expected ‘char *’ but argument is of type ‘char **’
+   62 | extern U64              ft_fread(file fd, char *buffer, U64 size);
+      |                                           ~~~~~~^~~~~~
+/usr/bin/ld: /tmp/cc5bvgQP.o: in function `test_ft_lstsort_string':
+/home/reclaire/Desktop/ft_ls/libft/tests/./srcs/test_lstsort.c:123: undefined reference to `ft_lstsort'
+/usr/bin/ld: /tmp/cc5bvgQP.o: in function `test_ft_lstsort_int':
+/home/reclaire/Desktop/ft_ls/libft/tests/./srcs/test_lstsort.c:81: undefined reference to `ft_lstsort'
+collect2: error: ld returned 1 exit status
+

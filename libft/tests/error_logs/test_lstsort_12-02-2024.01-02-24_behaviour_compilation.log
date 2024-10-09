@@ -1,0 +1,16 @@
+====BEGIN LOG====
+Code: 1
+=================
+
+=================
+In file included from ./srcs/test_lstsort.c:13:
+./libft_tests.h:22:11: fatal error: libft.h: No such file or directory
+   22 | # include "libft.h"
+      |           ^~~~~~~~~
+compilation terminated.
+In file included from main_behaviour.c:13:
+libft_tests.h:22:11: fatal error: libft.h: No such file or directory
+   22 | # include "libft.h"
+      |           ^~~~~~~~~
+compilation terminated.
+

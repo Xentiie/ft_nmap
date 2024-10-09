@@ -1,0 +1,33 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/",
+                "/home/reclaire/Desktop/libft"
+            ],
+            "defines": [
+                "FT_OS_LINUX",
+                "TEST",
+                "FT_INFLATE_CODES_GENERATOR"
+            ],
+            "compilerPath": "/usr/bin/gcc",
+            "intelliSenseMode": "linux-gcc-x64"
+        },
+        {
+            "name": "Windows",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:/mingw64/x86_64-w64-mingw32/include/**",
+            ],
+            "defines": [
+                "FT_OS_WIN32",
+                "TEST",
+                "FT_INFLATE_CODES_GENERATOR"
+            ],
+            "compilerPath": "C:/mingw64/bin/gcc.exe"
+        }
+    ],
+    "version": 4
+}

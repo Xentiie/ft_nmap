@@ -1,0 +1,35 @@
+====BEGIN LOG====
+Code: 1
+=================
+
+=================
+./srcs/test_lstsort.c: In function ‘randomize_array’:
+./srcs/test_lstsort.c:42:39: error: lvalue required as unary ‘&’ operand
+   42 |                 void *tmp = ft_memdup(&(a+(i*elem_size)), elem_size);
+      |                                       ^
+./srcs/test_lstsort.c: In function ‘test_ft_lstsort_string’:
+./srcs/test_lstsort.c:119:26: warning: format ‘%s’ expects argument of type ‘char *’, but argument 2 has type ‘int’ [-Wformat=]
+  119 |                 printf("%s ", *((int*)curr->content));
+      |                         ~^    ~~~~~~~~~~~~~~~~~~~~~~
+      |                          |    |
+      |                          |    int
+      |                          char *
+      |                         %d
+./srcs/test_lstsort.c:124:26: warning: passing argument 2 of ‘ft_lstsort’ from incompatible pointer type [-Wincompatible-pointer-types]
+  124 |         ft_lstsort(&lst, ft_strcmp);
+      |                          ^~~~~~~~~
+      |                          |
+      |                          S32 (*)(const char *, const char *) {aka int (*)(const char *, const char *)}
+In file included from ./libft_tests.h:22,
+                 from ./srcs/test_lstsort.c:13:
+../libft.h:1283:56: note: expected ‘S32 (*)(void *, void *)’ {aka ‘int (*)(void *, void *)’} but argument is of type ‘S32 (*)(const char *, const char *)’ {aka ‘int (*)(const char *, const char *)’}
+ 1283 | void                    ft_lstsort(t_list **lst, S32 (*key)(void *, void *));
+      |                                                  ~~~~~~^~~~~~~~~~~~~~~~~~~~
+./srcs/test_lstsort.c:138:26: warning: format ‘%s’ expects argument of type ‘char *’, but argument 2 has type ‘int’ [-Wformat=]
+  138 |                 printf("%s ", *((int*)curr->content));
+      |                         ~^    ~~~~~~~~~~~~~~~~~~~~~~
+      |                          |    |
+      |                          |    int
+      |                          char *
+      |                         %d
+

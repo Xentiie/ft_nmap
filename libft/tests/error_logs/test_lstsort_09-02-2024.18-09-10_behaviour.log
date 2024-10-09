@@ -1,0 +1,9 @@
+====BEGIN LOG====
+Code: 0
+=================
+TESTS INIT
+FUNCTION BEHAVIOUR TESTS
+    -> basic test: FAILED (ft_errno: 2)
+
+=================
+

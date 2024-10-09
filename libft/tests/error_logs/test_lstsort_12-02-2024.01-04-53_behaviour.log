@@ -1,0 +1,14 @@
+====BEGIN LOG====
+Code: 0
+=================
+TESTS INIT
+FUNCTION BEHAVIOUR TESTS
+original: 1 0 6 8 2 4 3 9 7 5 
+sorted:   0 1 2 3 4 5 6 7 8 9 
+    -> ft_lstsort int: PASSED
+original: 3 a 2 1 e c f b d 
+sorted:   3 1 2 a b c d e f 
+    -> ft_lstsort string: FAILED
+
+=================
+

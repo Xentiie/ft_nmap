@@ -1,0 +1,98 @@
+====BEGIN LOG====
+Code: 0
+=================
+TESTS INIT
+FUNCTION BEHAVIOUR TESTS
+original: e g 2 b f d a 1 c 
+e g
+e g 2 b f d a 1 c 
+j=e
+e 2
+g e 2 b f d a 1 c 
+2 b
+g e 2 b f d a 1 c 
+j=2
+2 f
+g e b 2 f d a 1 c 
+j=2
+2 d
+g e b f 2 d a 1 c 
+j=2
+2 a
+g e b f d 2 a 1 c 
+j=2
+2 1
+g e b f d a 2 1 c 
+j=2
+2 c
+g e b f d a 1 2 c 
+j=2
+g e
+g e b f d a 1 c 2 
+e b
+g e b f d a 1 c 2 
+j=e
+e f
+g b e f d a 1 c 2 
+j=e
+e d
+g b f e d a 1 c 2 
+j=e
+e a
+g b f d e a 1 c 2 
+j=e
+e 1
+g b f d a e 1 c 2 
+j=e
+e c
+g b f d a 1 e c 2 
+j=e
+g b
+g b f d a 1 c e 2 
+b f
+g b f d a 1 c e 2 
+f d
+g b f d a 1 c e 2 
+j=f
+f a
+g b d f a 1 c e 2 
+j=f
+f 1
+g b d a f 1 c e 2 
+j=f
+f c
+g b d a 1 f c e 2 
+j=f
+g b
+g b d a 1 c f e 2 
+b d
+g b d a 1 c f e 2 
+d a
+g b d a 1 c f e 2 
+j=d
+d 1
+g b a d 1 c f e 2 
+1 c
+g b a d 1 c f e 2 
+j=1
+g b
+g b a d c 1 f e 2 
+b a
+g b a d c 1 f e 2 
+j=b
+b d
+g a b d c 1 f e 2 
+d c
+g a b d c 1 f e 2 
+j=d
+g a
+g a b c d 1 f e 2 
+a b
+g a b c d 1 f e 2 
+b c
+g a b c d 1 f e 2 
+sorted:   g a b c d 1 f e 2 
+    -> ft_sort string: FAILED
+
+=================
+

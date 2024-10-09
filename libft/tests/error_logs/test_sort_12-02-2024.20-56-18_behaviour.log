@@ -1,0 +1,115 @@
+====BEGIN LOG====
+Code: 0
+=================
+TESTS INIT
+FUNCTION BEHAVIOUR TESTS
+original: 2 a g b f 1 c d e 
+j=2
+j+1=INIT
+2 a g b f 1 c d e 
+
+j=1
+j+1=
+a 2 g b f 1 c d e 
+
+j=
+j+1=
+a g 2 b f 1 c d e 
+
+j=
+j+1=dup
+a g b 2 f 1 c d e 
+
+j=dup
+j+1=
+a g b f 2 1 c d e 
+
+j=
+j+1=NIT
+a g b f 1 2 c d e 
+
+j=NIT
+j+1=TION BEHAVIOUR TESTS
+a g b f 1 c 2 d e 
+
+j=TION BEHAVIOUR TESTS
+j+1=AVIOUR TESTS
+a g b f 1 c d 2 e 
+
+j=a
+j+1=1
+a g b f 1 c d e 2 
+
+j=d
+j+1=
+g a b f 1 c d e 2 
+
+j=
+j+1=A
+g a b f 1 c d e 2 
+
+j=A
+j+1=e
+g a b f 1 c d e 2 
+
+j=e
+j+1=p2
+g a b 1 f c d e 2 
+
+j=p2
+j+1= INIT
+g a b 1 c f d e 2 
+
+j= INIT
+j+1=NCTION BEHAVIOUR TESTS
+g a b 1 c d f e 2 
+
+j=g
+j+1=d
+g a b 1 c d f e 2 
+
+j=d
+j+1=
+g a b 1 c d f e 2 
+
+j=
+j+1=A
+g a b 1 c d f e 2 
+
+j=A
+j+1=e
+g a b 1 c d f e 2 
+
+j=e
+j+1=p2
+g a b c 1 d f e 2 
+
+j=p2
+j+1= INIT
+g a b c d 1 f e 2 
+
+j=g
+j+1=d
+g a b c d 1 f e 2 
+
+j=d
+j+1=
+g a b c d 1 f e 2 
+
+j=
+j+1=A
+g a b c d 1 f e 2 
+
+j=A
+j+1=e
+g a b c d 1 f e 2 
+
+j=e
+j+1=p2
+g a b c d 1 f e 2 
+
+sorted:   g a b c d 1 f e 2 
+    -> ft_sort string: FAILED
+
+=================
+

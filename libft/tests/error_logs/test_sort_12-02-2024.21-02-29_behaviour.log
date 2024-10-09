@@ -1,0 +1,271 @@
+====BEGIN LOG====
+Code: 0
+=================
+TESTS INIT
+FUNCTION BEHAVIOUR TESTS
+original: e 1 a c d b f 2 g 
+j=e 101
+j+1=1 49
+STRCMP=|g`��$V| |Q`��$V|
+Swap ? : 22 TRUE
+e 1 a c d b f 2 g 
+STRCMP=|g`��$V| |Q`��$V|
+
+j=e 101
+j+1=a 97
+STRCMP=|g`��$V| |I`��$V|
+Swap ? : 30 TRUE
+1 e a c d b f 2 g 
+STRCMP=|g`��$V| |I`��$V|
+
+j=e 101
+j+1=c 99
+STRCMP=|g`��$V| |M`��$V|
+Swap ? : 26 TRUE
+1 a e c d b f 2 g 
+STRCMP=|g`��$V| |M`��$V|
+
+j=e 101
+j+1=d 100
+STRCMP=|g`��$V| |O`��$V|
+Swap ? : 24 TRUE
+1 a c e d b f 2 g 
+STRCMP=|g`��$V| |O`��$V|
+
+j=e 101
+j+1=b 98
+STRCMP=|g`��$V| |K`��$V|
+Swap ? : 28 TRUE
+1 a c d e b f 2 g 
+STRCMP=|g`��$V| |K`��$V|
+
+j=e 101
+j+1=f 102
+STRCMP=|g`��$V| |S`��$V|
+Swap ? : 20 TRUE
+1 a c d b e f 2 g 
+STRCMP=|g`��$V| |S`��$V|
+
+j=e 101
+j+1=2 50
+STRCMP=|g`��$V| |p`��$V|
+Swap ? : -9 FALSE
+1 a c d b f e 2 g 
+STRCMP=|g`��$V| |p`��$V|
+
+j=2 50
+j+1=g 103
+STRCMP=|p`��$V| |G`��$V|
+Swap ? : 41 TRUE
+1 a c d b f e 2 g 
+STRCMP=|p`��$V| |G`��$V|
+
+j=1 49
+j+1=a 97
+STRCMP=|Q`��$V| |I`��$V|
+Swap ? : 8 TRUE
+1 a c d b f e g 2 
+STRCMP=|Q`��$V| |I`��$V|
+
+j=1 49
+j+1=c 99
+STRCMP=|Q`��$V| |M`��$V|
+Swap ? : 4 TRUE
+a 1 c d b f e g 2 
+STRCMP=|Q`��$V| |M`��$V|
+
+j=1 49
+j+1=d 100
+STRCMP=|Q`��$V| |O`��$V|
+Swap ? : 2 TRUE
+a c 1 d b f e g 2 
+STRCMP=|Q`��$V| |O`��$V|
+
+j=1 49
+j+1=b 98
+STRCMP=|Q`��$V| |K`��$V|
+Swap ? : 6 TRUE
+a c d 1 b f e g 2 
+STRCMP=|Q`��$V| |K`��$V|
+
+j=1 49
+j+1=f 102
+STRCMP=|Q`��$V| |S`��$V|
+Swap ? : -2 FALSE
+a c d b 1 f e g 2 
+STRCMP=|Q`��$V| |S`��$V|
+
+j=f 102
+j+1=e 101
+STRCMP=|S`��$V| |g`��$V|
+Swap ? : -20 FALSE
+a c d b 1 f e g 2 
+STRCMP=|S`��$V| |g`��$V|
+
+j=e 101
+j+1=g 103
+STRCMP=|g`��$V| |G`��$V|
+Swap ? : 32 TRUE
+a c d b 1 f e g 2 
+STRCMP=|g`��$V| |G`��$V|
+
+j=a 97
+j+1=c 99
+STRCMP=|I`��$V| |M`��$V|
+Swap ? : -4 FALSE
+a c d b 1 f g e 2 
+STRCMP=|I`��$V| |M`��$V|
+
+j=c 99
+j+1=d 100
+STRCMP=|M`��$V| |O`��$V|
+Swap ? : -2 FALSE
+a c d b 1 f g e 2 
+STRCMP=|M`��$V| |O`��$V|
+
+j=d 100
+j+1=b 98
+STRCMP=|O`��$V| |K`��$V|
+Swap ? : 4 TRUE
+a c d b 1 f g e 2 
+STRCMP=|O`��$V| |K`��$V|
+
+j=d 100
+j+1=1 49
+STRCMP=|O`��$V| |Q`��$V|
+Swap ? : -2 FALSE
+a c b d 1 f g e 2 
+STRCMP=|O`��$V| |Q`��$V|
+
+j=1 49
+j+1=f 102
+STRCMP=|Q`��$V| |S`��$V|
+Swap ? : -2 FALSE
+a c b d 1 f g e 2 
+STRCMP=|Q`��$V| |S`��$V|
+
+j=f 102
+j+1=g 103
+STRCMP=|S`��$V| |G`��$V|
+Swap ? : 12 TRUE
+a c b d 1 f g e 2 
+STRCMP=|S`��$V| |G`��$V|
+
+j=a 97
+j+1=c 99
+STRCMP=|I`��$V| |M`��$V|
+Swap ? : -4 FALSE
+a c b d 1 g f e 2 
+STRCMP=|I`��$V| |M`��$V|
+
+j=c 99
+j+1=b 98
+STRCMP=|M`��$V| |K`��$V|
+Swap ? : 2 TRUE
+a c b d 1 g f e 2 
+STRCMP=|M`��$V| |K`��$V|
+
+j=c 99
+j+1=d 100
+STRCMP=|M`��$V| |O`��$V|
+Swap ? : -2 FALSE
+a b c d 1 g f e 2 
+STRCMP=|M`��$V| |O`��$V|
+
+j=d 100
+j+1=1 49
+STRCMP=|O`��$V| |Q`��$V|
+Swap ? : -2 FALSE
+a b c d 1 g f e 2 
+STRCMP=|O`��$V| |Q`��$V|
+
+j=1 49
+j+1=g 103
+STRCMP=|Q`��$V| |G`��$V|
+Swap ? : 10 TRUE
+a b c d 1 g f e 2 
+STRCMP=|Q`��$V| |G`��$V|
+
+j=a 97
+j+1=b 98
+STRCMP=|I`��$V| |K`��$V|
+Swap ? : -2 FALSE
+a b c d g 1 f e 2 
+STRCMP=|I`��$V| |K`��$V|
+
+j=b 98
+j+1=c 99
+STRCMP=|K`��$V| |M`��$V|
+Swap ? : -2 FALSE
+a b c d g 1 f e 2 
+STRCMP=|K`��$V| |M`��$V|
+
+j=c 99
+j+1=d 100
+STRCMP=|M`��$V| |O`��$V|
+Swap ? : -2 FALSE
+a b c d g 1 f e 2 
+STRCMP=|M`��$V| |O`��$V|
+
+j=d 100
+j+1=g 103
+STRCMP=|O`��$V| |G`��$V|
+Swap ? : 8 TRUE
+a b c d g 1 f e 2 
+STRCMP=|O`��$V| |G`��$V|
+
+j=a 97
+j+1=b 98
+STRCMP=|I`��$V| |K`��$V|
+Swap ? : -2 FALSE
+a b c g d 1 f e 2 
+STRCMP=|I`��$V| |K`��$V|
+
+j=b 98
+j+1=c 99
+STRCMP=|K`��$V| |M`��$V|
+Swap ? : -2 FALSE
+a b c g d 1 f e 2 
+STRCMP=|K`��$V| |M`��$V|
+
+j=c 99
+j+1=g 103
+STRCMP=|M`��$V| |G`��$V|
+Swap ? : 6 TRUE
+a b c g d 1 f e 2 
+STRCMP=|M`��$V| |G`��$V|
+
+j=a 97
+j+1=b 98
+STRCMP=|I`��$V| |K`��$V|
+Swap ? : -2 FALSE
+a b g c d 1 f e 2 
+STRCMP=|I`��$V| |K`��$V|
+
+j=b 98
+j+1=g 103
+STRCMP=|K`��$V| |G`��$V|
+Swap ? : 4 TRUE
+a b g c d 1 f e 2 
+STRCMP=|K`��$V| |G`��$V|
+
+j=a 97
+j+1=g 103
+STRCMP=|I`��$V| |G`��$V|
+Swap ? : 2 TRUE
+a g b c d 1 f e 2 
+STRCMP=|I`��$V| |G`��$V|
+
+sorted:   STRCMP=|g| |a|
+g STRCMP=|a| |b|
+a STRCMP=|b| |c|
+b STRCMP=|c| |d|
+c STRCMP=|d| |1|
+d STRCMP=|1| |f|
+1 STRCMP=|f| |e|
+f STRCMP=|e| |2|
+e 2 
+    -> ft_sort string: FAILED
+
+=================
+

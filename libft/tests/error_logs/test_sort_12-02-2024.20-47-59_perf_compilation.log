@@ -1,0 +1,14 @@
+====BEGIN LOG====
+Code: 1
+=================
+
+=================
+./srcs/test_sort.c: In function ‘test_ft_sort_string’:
+./srcs/test_sort.c:103:9: warning: implicit declaration of function ‘ft_sort2’; did you mean ‘ft_sort’? [-Wimplicit-function-declaration]
+  103 |         ft_sort2(TEST_STRING_ARRAY, array_len, ft_strcmp);
+      |         ^~~~~~~~
+      |         ft_sort
+/usr/bin/ld: /tmp/ccdk2I7B.o: in function `test_ft_sort_string':
+/home/reclaire/Desktop/ft_ls/libft/tests/./srcs/test_sort.c:103: undefined reference to `ft_sort2'
+collect2: error: ld returned 1 exit status
+

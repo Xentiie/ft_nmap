@@ -1,0 +1,9 @@
+====BEGIN LOG====
+Code: 1
+=================
+
+=================
+/usr/bin/ld: /tmp/ccdvkvfO.o: in function `test_ft_lstsort':
+test_lstsort.c:(.text+0x107): undefined reference to `ft_lstsort'
+collect2: error: ld returned 1 exit status
+

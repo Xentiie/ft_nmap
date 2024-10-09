@@ -1,0 +1,48 @@
+====BEGIN LOG====
+Code: 1
+=================
+
+=================
+./srcs/test_lstsort.c: In function ‘test_ft_lstsort_string’:
+./srcs/test_lstsort.c:118:26: warning: format ‘%s’ expects argument of type ‘char *’, but argument 2 has type ‘void *’ [-Wformat=]
+  118 |                 printf("%s ", curr->content);
+      |                         ~^    ~~~~~~~~~~~~~
+      |                          |        |
+      |                          char *   void *
+      |                         %p
+./srcs/test_lstsort.c:123:26: warning: passing argument 2 of ‘ft_lstsort’ from incompatible pointer type [-Wincompatible-pointer-types]
+  123 |         ft_lstsort(&lst, ft_strcmp);
+      |                          ^~~~~~~~~
+      |                          |
+      |                          S32 (*)(const char *, const char *) {aka int (*)(const char *, const char *)}
+In file included from ./libft_tests.h:27,
+                 from ./srcs/test_lstsort.c:13:
+../libft/lists.h:203:56: note: expected ‘S32 (*)(void *, void *)’ {aka ‘int (*)(void *, void *)’} but argument is of type ‘S32 (*)(const char *, const char *)’ {aka ‘int (*)(const char *, const char *)’}
+  203 | void                    ft_lstsort(t_list **lst, S32 (*key)(void *, void *));
+      |                                                  ~~~~~~^~~~~~~~~~~~~~~~~~~~
+./srcs/test_lstsort.c:137:26: warning: format ‘%s’ expects argument of type ‘char *’, but argument 2 has type ‘void *’ [-Wformat=]
+  137 |                 printf("%s ", curr->content);
+      |                         ~^    ~~~~~~~~~~~~~
+      |                          |        |
+      |                          char *   void *
+      |                         %p
+main_behaviour.c: In function ‘create_behaviour_tests’:
+main_behaviour.c:27:9: error: too few arguments to function ‘strerror’
+   27 |         strerror();
+      |         ^~~~~~~~
+In file included from main_behaviour.c:17:
+/usr/include/string.h:419:14: note: declared here
+  419 | extern char *strerror (int __errnum) __THROW;
+      |              ^~~~~~~~
+main_behaviour.c: In function ‘read_stdout_redirect’:
+main_behaviour.c:110:42: warning: passing argument 2 of ‘ft_fread’ from incompatible pointer type [-Wincompatible-pointer-types]
+  110 |         while ((br = ft_fread(pipefd[0], buf, sizeof(char) * 4095)) > 0)
+      |                                          ^~~
+      |                                          |
+      |                                          char **
+In file included from libft_tests.h:28,
+                 from main_behaviour.c:13:
+../libft/io.h:62:49: note: expected ‘char *’ but argument is of type ‘char **’
+   62 | extern U64              ft_fread(file fd, char *buffer, U64 size);
+      |                                           ~~~~~~^~~~~~
+

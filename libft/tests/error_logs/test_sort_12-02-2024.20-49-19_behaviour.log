@@ -1,0 +1,83 @@
+====BEGIN LOG====
+Code: 0
+=================
+TESTS INIT
+FUNCTION BEHAVIOUR TESTS
+original: a c d e 2 b f 1 g 
+a c
+a c d e 2 b f 1 g 
+c d
+a c d e 2 b f 1 g 
+d e
+a c d e 2 b f 1 g 
+e 2
+a c d e 2 b f 1 g 
+2 b
+a c d e 2 b f 1 g 
+2 f
+a c d e b 2 f 1 g 
+2 1
+a c d e b f 2 1 g 
+2 g
+a c d e b f 1 2 g 
+a c
+a c d e b f 1 g 2 
+c d
+a c d e b f 1 g 2 
+d e
+a c d e b f 1 g 2 
+e b
+a c d e b f 1 g 2 
+e f
+a c d b e f 1 g 2 
+e 1
+a c d b f e 1 g 2 
+e g
+a c d b f 1 e g 2 
+a c
+a c d b f 1 g e 2 
+c d
+a c d b f 1 g e 2 
+d b
+a c d b f 1 g e 2 
+d f
+a c b d f 1 g e 2 
+f 1
+a c b d f 1 g e 2 
+f g
+a c b d 1 f g e 2 
+a c
+a c b d 1 g f e 2 
+c b
+a c b d 1 g f e 2 
+c d
+a b c d 1 g f e 2 
+d 1
+a b c d 1 g f e 2 
+1 g
+a b c d 1 g f e 2 
+a b
+a b c d g 1 f e 2 
+b c
+a b c d g 1 f e 2 
+c d
+a b c d g 1 f e 2 
+d g
+a b c d g 1 f e 2 
+a b
+a b c g d 1 f e 2 
+b c
+a b c g d 1 f e 2 
+c g
+a b c g d 1 f e 2 
+a b
+a b g c d 1 f e 2 
+b g
+a b g c d 1 f e 2 
+a g
+a g b c d 1 f e 2 
+sorted:   g a b c d 1 f e 2 
+    -> ft_sort string: FAILED
+
+=================
+

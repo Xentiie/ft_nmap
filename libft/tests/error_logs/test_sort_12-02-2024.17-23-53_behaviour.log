@@ -1,0 +1,56 @@
+====BEGIN LOG====
+Code: 0
+=================
+TESTS INIT
+FUNCTION BEHAVIOUR TESTS
+original: test1 yes ft_ls srcs Makefile libft malloc_fail.so malloc_fail.c t.c objs 
+test1
+test1
+test1
+test1
+test1
+test1
+test1
+test1
+test1
+yes
+ft_ls
+ft_ls
+ft_ls
+ft_ls
+ft_ls
+ft_ls
+ft_ls
+yes
+yes
+yes
+yes
+malloc_fail.so
+malloc_fail.so
+malloc_fail.so
+srcs
+Makefile
+Makefile
+yes
+yes
+t.c
+srcs
+libft
+Makefile
+malloc_fail.c
+yes
+srcs
+libft
+Makefile
+malloc_fail.c
+srcs
+libft
+Makefile
+srcs
+libft
+srcs
+sorted:   srcs objs libft Makefile malloc_fail.c yes t.c malloc_fail.so ft_ls test1 
+    -> ft_sort string: FAILED
+
+=================
+
