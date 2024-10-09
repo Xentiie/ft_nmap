@@ -6,7 +6,7 @@
 #    By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/04/15 17:26:47 by reclaire          #+#    #+#              #
-#    Updated: 2024/10/09 15:56:01 by reclaire         ###   ########.fr        #
+#    Updated: 2024/10/09 18:49:30 by reclaire         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -19,7 +19,7 @@ INCLUDES	+=	-I./libft -I./ -I./srcs
 #CFLAGS		+=	-g -fsanitize=address
 CFLAGS		+=	-g
 
-$(NAME):	objs $(OBJS)
+$(NAME):	_libft objs $(OBJS)
 			$(CC) $(INCLUDES) $(LIBS_PATHS) $(OBJS) $(LIBS) -o $(NAME)
 
 _libft:

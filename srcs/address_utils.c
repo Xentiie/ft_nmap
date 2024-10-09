@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   address_name.c                                     :+:      :+:    :+:   */
+/*   address_utils.c                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 17:20:56 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/09 17:26:08 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/09 19:26:32 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,7 +34,7 @@ string full_addr_to_str(U32 addr)
 	dummy_addr.sin_addr.s_addr = addr;
 	if ((i = getnameinfo((struct sockaddr *)&dummy_addr, sizeof(struct sockaddr_in), addr_str, sizeof(addr_str), NULL, 0, NI_NAMEREQD)) != 0)
 	{
-		ft_dprintf(ft_stderr, "%s: %s\n", ft_argv[0], gai_strerror(i));
+		//ft_dprintf(ft_stderr, "%s: %s\n", ft_argv[0], gai_strerror(i));
 		return NULL;
 	}
 
@@ -50,4 +50,37 @@ string full_addr_to_str(U32 addr)
 	ft_strcat(addr_str, ")");
 
 	return ft_strdup(addr_str);
+}
+
+U32 dns_resolve(const_string addr)
+{
+	struct addrinfo hints;
+	struct addrinfo *res;
+	struct addrinfo *ptr;
+	U32 out_addr;
+	S32 i;
+
+	hints = (struct addrinfo){0};
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+
+	if ((i = getaddrinfo(addr, NULL, &hints, &res)) != 0)
+	{
+		//ft_dprintf(ft_stderr, "%s: %s: %s\n", ft_argv[0], addr, gai_strerror(i));
+		return 0;
+	}
+	ptr = res;
+	while (res->ai_family != AF_INET)
+		res = res->ai_next;
+
+	if (!res)
+	{
+		ft_dprintf(ft_stderr, "%s: %s: No address associated with hostname\n", ft_argv[0], addr);
+		return 0;
+	}
+
+	out_addr = ((struct sockaddr_in *)res->ai_addr)->sin_addr.s_addr;
+	freeaddrinfo(ptr);
+
+	return out_addr;
 }

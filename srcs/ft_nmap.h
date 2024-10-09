@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 16:31:46 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/09 17:25:08 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/09 17:47:25 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,23 +64,24 @@ enum e_scan_type
 };
 
 /* parameters */
-extern const_string source_addr_file; /* file containing target addresses. NULL if no file has been specified */
-extern U16 ports_min, ports_max;	  /* range of ports to scan */
-extern U8 thread_count;				  /* number of threads */
-extern enum e_scan_type scan_type;	  /* scan type */
+extern U16 ports_min, ports_max;   /* range of ports to scan */
+extern U8 thread_count;			   /* number of threads */
+extern enum e_scan_type scan_type; /* scan type */
 
 /* variables */
-extern U32 srcaddr; /* source address */
-extern U32 dstaddr; /* destination addresses, as a 32 bit unsigned integer */
-extern char dstaddr_str[16 /* xxx.xxx.xxx.xxx */ +
-						NI_MAXHOST /* max hostname size */ +
-						4 /* ' ', '(', ')', '\0' */]; /* destination address as a string */
+extern U32 srcaddr;		  /* source address */
+extern U32 *dstaddr;	  /* destination addresses, as a 32 bit unsigned integer */
+extern U32 dstaddr_cnt;	  /* destination addresses count */
+extern U32 dstaddr_alloc; /* destination addresses buffer allocation size */
 
 extern const const_string scan_types_str[7]; /* scan types names */
 #define get_scan_type() (scan_types_str[scan_type + 1])
 
 U16 checksum(U16 *ptr, U64 nbytes);
 string addr_to_str(U32 addr);
+// Returns NULL on error
 string full_addr_to_str(U32 addr);
+// Returns 0 on error
+U32 dns_resolve(const_string addr);
 
 #endif
