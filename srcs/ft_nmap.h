@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 16:31:46 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/10 04:31:52 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/10 16:07:39 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -85,8 +85,14 @@ typedef struct s_addr
 {
 	U32 addr;
 	U16 port;
-	string address_name;
 } Address;
+
+
+
+typedef struct s_test_result *TestResult;
+
+TestResult make_test(enum e_scan_type test_type, Address addr);
+
 
 AddressIterator address_iterator_init();
 void address_iterator_destroy(AddressIterator it);
