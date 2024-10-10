@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 16:31:46 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/09 17:47:25 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/10 04:31:52 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 #include "libft/io.h"
 #include "libft/limits.h"
 #include "libft/strings.h"
+#include "libft/maths.h"
 
 #ifndef __USE_MISC
 #define __USE_MISC 1
@@ -76,6 +77,21 @@ extern U32 dstaddr_alloc; /* destination addresses buffer allocation size */
 
 extern const const_string scan_types_str[7]; /* scan types names */
 #define get_scan_type() (scan_types_str[scan_type + 1])
+
+
+/* address iterator */
+typedef struct s_addr_iterator *AddressIterator;
+typedef struct s_addr
+{
+	U32 addr;
+	U16 port;
+	string address_name;
+} Address;
+
+AddressIterator address_iterator_init();
+void address_iterator_destroy(AddressIterator it);
+bool address_iterator_ingest(AddressIterator it, const_string addr_str);
+bool address_iterator_next(AddressIterator it, Address *addr);
 
 U16 checksum(U16 *ptr, U64 nbytes);
 string addr_to_str(U32 addr);
