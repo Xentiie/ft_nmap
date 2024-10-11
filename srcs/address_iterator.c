@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 01:04:08 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/10 17:29:00 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/11 21:23:23 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,52 +17,25 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-typedef struct s_addr_generator
-{
-	bool is_hostname;
-	/*
-	port.x = port actuel
-	port.y = port min
-	port.z = port max
-	*/
-	t_iv3 port;
-	union
-	{
-		/*
-		Pour un nombre:
-			byte.x = valeur
-		Pour une range:
-			byte.x = valeur actuel
-			byte.y = min
-			byte.z = max
-
-		stored least-significant byte first (dans 10.20.30.40, bytes[0].x == 40, bytes[1].x == 30...)
-		*/
-		t_iv3 ip[4];
-		U32 addr;
-	};
-} AddressGenerator;
-
 typedef struct s_addr_iterator
 {
-	string *addrs;
 	U32 addrs_n;
 	U32 addrs_alloc;
-	t_iv2 default_port_range;
-
-	U32 it_current; /* addrs index */
-	/*
-	stock le port actuel (pour google.com:[0-4]: google.com:10, google.com:11...)
-	ainsi que l'état de l'ip actuel (pour 8.8.8.[0-10]: 8.8.8.0, 8.8.8.1, 8.8.8.2...)
-	*/
-	AddressGenerator generator;
-	bool generating;
+	U32 addr_curr; /* addrs index */
+	Address *addrs;
 
 	regex_t ip_reg;
 	regex_t range_reg;
+
+	U64 progress;
+	U64 total;
 } *AddressIterator;
 
-AddressIterator address_iterator_init(t_iv2 default_port_range)
+#define range_val(range) (range).x
+#define range_min(range) (range).y
+#define range_max(range) (range).z
+
+AddressIterator address_iterator_init()
 {
 	//^(([0-9]+)|([0-9]+-[0-9]+))\\.(([0-9]+)|([0-9]+-[0-9]+))\\.(([0-9]+)|([0-9]+-[0-9]+))\\.(([0-9]+)|([0-9]+-[0-9]+))$
 	const string ip_reg = "^([0-9]+|\\[[0-9]+-[0-9]+\\])\\.([0-9]+|\\[[0-9]+-[0-9]+\\])\\.([0-9]+|\\[[0-9]+-[0-9]+\\])\\.([0-9]+|\\[[0-9]+-[0-9]+\\])$";
@@ -73,25 +46,19 @@ AddressIterator address_iterator_init(t_iv2 default_port_range)
 	if (UNLIKELY((it = malloc(sizeof(struct s_addr_iterator))) == NULL))
 		return NULL;
 	ft_bzero(it, sizeof(struct s_addr_iterator));
+	it->progress = 0;
+	it->total = 0;
 
 	it->addrs_n = 0;
+	it->addr_curr = 0;
 	it->addrs_alloc = 5;
-	if (UNLIKELY((it->addrs = malloc(sizeof(string) * it->addrs_alloc)) == NULL))
+	if (UNLIKELY((it->addrs = malloc(sizeof(Address) * it->addrs_alloc)) == NULL))
 		goto exit_err;
-
-	it->default_port_range = default_port_range;
-	it->it_current = 0;
 
 	if ((ret = regcomp(&it->ip_reg, ip_reg, REG_EXTENDED)) != 0)
-	{
-		// printf("couldn't compile regex %s\n", ip_reg);
 		goto exit_err;
-	}
 	if ((ret = regcomp(&it->range_reg, range_reg, REG_EXTENDED)) != 0)
-	{
-		// printf("couldn't compile regex %s\n", range_reg);
 		goto exit_err;
-	}
 
 	return it;
 exit_err:
@@ -106,8 +73,6 @@ exit_err:
 
 void address_iterator_destroy(AddressIterator it)
 {
-	for (U32 i = 0; i < it->addrs_n; i++)
-		free(it->addrs[i]);
 	regfree(&it->ip_reg);
 	regfree(&it->range_reg);
 	free(it->addrs);
@@ -116,57 +81,187 @@ void address_iterator_destroy(AddressIterator it)
 
 bool address_iterator_ingest(AddressIterator it, const_string addr_str)
 {
-	string *new;
+	regmatch_t matches[5];
+	regmatch_t range_matches[3];
+	U64 total;
+	Address addr;
+	string str;
+	string byte_str;
+
+	byte_str = NULL;
+	str = ft_strdup(addr_str);
+	total = 1;
+
+	{ /* PORT */
+		string port_str;
+
+		port_str = (string)ft_strchr(str, ':');
+		if (port_str)
+		{ /* port spécifié */
+
+			if (*(port_str + 1) == '\0') /* On tente de nous niquer */
+				goto exit_err;
+
+			*port_str = '\0';
+			port_str++;
+			if (regexec(&it->range_reg, port_str, array_len(range_matches), range_matches, 0) == REG_NOMATCH)
+			{ /* port simple */
+				if (!ft_str_isdigit(port_str))
+					goto exit_err;
+				S32 port = ft_atoi(port_str);
+				if (port < 0 || port > U16_MAX)
+					goto exit_err;
+				range_val(addr.port) = port - 1;
+				range_min(addr.port) = port;
+				range_max(addr.port) = port;
+			}
+			else
+			{
+				port_str[range_matches[1].rm_eo] = '\0';
+				port_str[range_matches[2].rm_eo] = '\0';
+				if (!ft_str_isdigit(port_str + range_matches[1].rm_so) || !ft_str_isdigit(port_str + range_matches[2].rm_so))
+					goto exit_err;
+				t_iv2 range = ivec2(
+					ft_atoi(port_str + range_matches[1].rm_so),
+					ft_atoi(port_str + range_matches[2].rm_so));
+				if ((range.x < 1 || range.x > U16_MAX || range.y < 1 || range.y > U16_MAX) || (range.y < range.x))
+					goto exit_err;
+				range_val(addr.port) = range.x - 1;
+				range_min(addr.port) = range.x;
+				range_max(addr.port) = range.y;
+			}
+		}
+		else
+		{
+			range_val(addr.port) = ports_min - 1;
+			range_min(addr.port) = ports_min;
+			range_max(addr.port) = ports_max;
+		}
+	}
+
+	{ /* IP */
+		/* check si l'entrée est un hostname, ou une addresse ip */
+		if (regexec(&it->ip_reg, str, array_len(matches), matches, 0) == REG_NOMATCH)
+		{ /* hostname */
+			addr.is_ip = FALSE;
+			addr.host.addr = dns_resolve(str);
+			if (addr.host.addr == 0)
+				goto exit_err;
+		}
+		else
+		{ /* ip */
+			addr.is_ip = TRUE;
+			/* on parse chaque byte, séparés par le regex */
+			for (S32 i = 4; i > 0; i--)
+			{
+				if (UNLIKELY((byte_str = ft_substr(str, matches[i].rm_so, matches[i].rm_eo - matches[i].rm_so)) == NULL))
+					goto exit_err;
+
+				/* check si c'est un nombre (255) ou une range ([10-255]) */
+				if (regexec(&it->range_reg, byte_str, array_len(range_matches), range_matches, 0) == REG_NOMATCH)
+				{ /* nombre */
+					if (!ft_str_isdigit(byte_str))
+						goto exit_err;
+					S32 n = ft_atoi(byte_str);
+					if (n < 0 || n > 255)
+						goto exit_err;
+					range_val(addr.ip[i - 1]) = n;
+					range_min(addr.ip[i - 1]) = n;
+					range_max(addr.ip[i - 1]) = n;
+				}
+				else
+				{ /* range */
+					byte_str[range_matches[1].rm_eo] = '\0';
+					byte_str[range_matches[2].rm_eo] = '\0';
+					if (!ft_str_isdigit(byte_str + range_matches[1].rm_so) || !ft_str_isdigit(byte_str + range_matches[2].rm_so))
+						goto exit_err;
+					t_iv2 range = ivec2(
+						ft_atoi(byte_str + range_matches[1].rm_so),
+						ft_atoi(byte_str + range_matches[2].rm_so));
+					if ((range.x < 0 || range.x > 255 || range.y < 0 || range.y > 255) || (range.y < range.x))
+						goto exit_err;
+					range_val(addr.ip[i - 1]) = range.x;
+					range_min(addr.ip[i - 1]) = range.x;
+					range_max(addr.ip[i - 1]) = range.y;
+				}
+				free(byte_str);
+				byte_str = NULL;
+			}
+		}
+	}
+	free(str);
+	str = NULL;
 
 	if (it->addrs_n >= it->addrs_alloc)
 	{
-		if (UNLIKELY((new = malloc(sizeof(string) * it->addrs_alloc * 2)) == NULL))
+		Address *new;
+
+		if (UNLIKELY((new = malloc(sizeof(Address) * it->addrs_alloc * 2)) == NULL))
 			return FALSE;
-		ft_memcpy(new, it->addrs, sizeof(string) * it->addrs_n);
+		ft_memcpy(new, it->addrs, sizeof(Address) * it->addrs_n);
 		free(it->addrs);
 		it->addrs = new;
+		it->addrs_alloc *= 2;
 	}
-	if (UNLIKELY((it->addrs[it->addrs_n] = ft_strdup(addr_str)) == NULL))
+
+	if (UNLIKELY((addr.source_str = ft_strdup(addr_str)) == NULL))
 		return FALSE;
+
+	it->addrs[it->addrs_n] = addr;
 	it->addrs_n++;
-	return TRUE;
-}
 
-U32 address_iterator_cnt(AddressIterator it)
-{
-	return it->addrs_n;
-}
-
-#define port_val() it->generator.port.x
-#define port_min() it->generator.port.y
-#define port_max() it->generator.port.z
-#define ip_val(i) it->generator.ip[i].x
-#define ip_min(i) it->generator.ip[i].y
-#define ip_max(i) it->generator.ip[i].z
-
-static bool generator_next(AddressIterator it, Address *addr)
-{
-	if (it->generator.is_hostname)
+	if (addr.is_ip)
 	{
-		if (port_val() > port_max()) /* finito */
-			return FALSE;
-		addr->addr = it->generator.addr;
-		addr->port = port_val()++;
+		for (U8 i = 0; i < array_len(addr.ip); i++)
+		{
+			if (range_min(addr.ip[i]) != range_max(addr.ip[i]))
+				total *= range_max(addr.ip[i]) - range_min(addr.ip[i]) + 1;
+		}
+	}
+	if (range_min(addr.port) != range_max(addr.port))
+		total *= range_max(addr.port) - range_min(addr.port) + 1;
+	it->total += total;
+
+
+	return TRUE;
+
+exit_err:
+	free(byte_str);
+	free(str);
+	return FALSE;
+}
+
+Address *address_iterator_next(AddressIterator it)
+{
+	Address *addr;
+
+	if (it->addr_curr >= it->addrs_n)
+		return NULL;
+
+	addr = &it->addrs[it->addr_curr];
+	if (!addr->is_ip)
+	{
+		if (range_val(addr->port) > range_max(addr->port)) /* finito */
+		{
+			it->addr_curr++;
+			return address_iterator_next(it);
+		}
+		range_val(addr->port)++;
 	}
 	else
 	{
 		/* on gere d'abord le port */
-		if (port_val() > port_max())
+		if (range_val(addr->port) >= range_max(addr->port))
 		{ /* port max atteint: on change d'ip */
-			port_val() = port_min();
+			range_val(addr->port) = range_min(addr->port) - 1;
 
 			/* incremente les valeurs des ip */
 			for (S32 i = 3; i >= 0; i--)
 			{
-				if (ip_min(i) != ip_max(i))
+				if (range_min(addr->ip[i]) != range_max(addr->ip[i]))
 				{ /* ce byte est représenté par une range */
-					ip_val(i)++;
-					if (ip_val(i) <= ip_max(i))
+					range_val(addr->ip[i])++;
+					if (range_val(addr->ip[i]) <= range_max(addr->ip[i]))
 						break; /* on va incrementer le reste uniquement si on overflow ici */
 				}
 			}
@@ -175,162 +270,52 @@ static bool generator_next(AddressIterator it, Address *addr)
 			bool done = TRUE;
 			for (S32 i = 0; i < 4; i++)
 			{
-				if (ip_min(i) != ip_max(i) && ip_val(i) <= ip_max(i))
+				if (range_min(addr->ip[i]) != range_max(addr->ip[i]) && range_val(addr->ip[i]) <= range_max(addr->ip[i]))
 				{
 					done = FALSE;
 					break;
 				}
 			}
 			if (done) /* yipi ! */
-				return FALSE;
+			{
+				it->addr_curr++;
+				return address_iterator_next(it);
+			}
 
 			/* update les overflows */
 			for (S32 i = 3; i >= 0; i--)
 			{
-				if (ip_val(i) > ip_max(i))
-					ip_val(i) = ip_min(i);
+				if (range_val(addr->ip[i]) > range_max(addr->ip[i]))
+					range_val(addr->ip[i]) = range_min(addr->ip[i]);
 			}
 		}
-
-		addr->addr = 0;
-		for (S32 i = 0; i < 4; i++)
-			addr->addr |= ip_val(i) << (8 * i);
-		addr->port = port_val()++;
+		range_val(addr->port)++;
 	}
-	return TRUE;
+	it->progress++;
+	return addr;
 }
 
-bool address_iterator_next(AddressIterator it, Address *addr)
+U64 address_iterator_total(AddressIterator it)
 {
-	if (!it->generating)
-	{ /* on passe a l'entrée suivante, on doit préparer le générateur */
-		const_string original_str;
-		string str;
+	return it->total;
+}
 
-		if (it->it_current >= it->addrs_n) /* on a tout fini !!!!!! */
-			return FALSE;
+U64 address_iterator_progress(AddressIterator it)
+{
+	return it->progress;
+}
 
-		str = ft_strdup(it->addrs[it->it_current]);
-		original_str = ft_strdup(it->addrs[it->it_current]);
+U32 address_get_ip(Address *addr)
+{
+	U32 out_addr;
 
-		string tmp = ft_strchr(str, ':'); // On coupe le :
-		if (tmp)
-			*tmp = '\0';
-
-		regmatch_t matches[5];
-		regmatch_t range_matches[3];
-		/* check si l'entrée est un hostname, ou une addresse ip */
-		if (regexec(&it->ip_reg, str, array_len(matches), matches, 0) == REG_NOMATCH)
-		{ /* hostname */
-			it->generator.is_hostname = TRUE;
-			it->generator.addr = dns_resolve(str);
-			if (it->generator.addr == 0)
-				goto exit_malformed_addr;
-			port_val() = ports_min;
-			port_min() = ports_min;
-			port_max() = ports_max;
-		}
-		else
-		{ /* ip */
-			it->generator.is_hostname = FALSE;
-			/* on parse chaque byte, séparés par le regex */
-			for (S32 i = 4; i > 0; i--)
-			{
-				string byte_str = str + matches[i].rm_so;
-				str[matches[i].rm_eo] = '\0';
-
-				/* check si c'est un nombre (255) ou une range ([10-255]) */
-				if (regexec(&it->range_reg, byte_str, array_len(range_matches), range_matches, 0) == REG_NOMATCH)
-				{ /* nombre */
-					S32 n = ft_atoi(byte_str);
-					if (n < 0 || n > 255)
-						goto exit_malformed_addr;
-					ip_val(i - 1) = n;
-					ip_min(i - 1) = n;
-					ip_max(i - 1) = n;
-				}
-				else
-				{ /* range */
-					byte_str[range_matches[1].rm_eo] = '\0';
-					byte_str[range_matches[2].rm_eo] = '\0';
-					S32 min = ft_atoi(byte_str + range_matches[1].rm_so);
-					S32 max = ft_atoi(byte_str + range_matches[2].rm_so);
-					if ((min < 0 || min > 255 || max < 0 || max > 255) || (max < min))
-						goto exit_malformed_addr;
-					// printf("	byte %d est une range: %d:%d\n", i, min, max);
-					ip_val(i - 1) = min;
-					ip_min(i - 1) = min;
-					ip_max(i - 1) = max;
-				}
-			}
-		}
-
-		free(str);
-		str = ft_strdup(original_str);
-		string port_str = (string)ft_strchr(str, ':');
-		if (port_str)
-		{ /* port spécifié */
-			// printf("port specified\n");
-			if (*(port_str + 1) == '\0') /* On tente de nous niquer */
-				goto exit_malformed_addr;
-
-			port_str++;
-			if (regexec(&it->range_reg, port_str, array_len(matches), matches, 0) == REG_NOMATCH)
-			{ /* port simple */
-				if (!ft_str_isdigit(port_str))
-					goto exit_malformed_addr;
-				S32 port = ft_atoi(port_str);
-				if (port < 0 || port > U16_MAX)
-					goto exit_malformed_addr;
-
-				port_val() = port;
-				port_min() = port_val();
-				port_max() = port_val();
-				// printf("simple port: %d\n", port_val());
-			}
-			else
-			{
-				port_str[matches[1].rm_eo] = '\0';
-				port_str[matches[2].rm_eo] = '\0';
-				S32 min = ft_atoi(port_str + matches[1].rm_so);
-				S32 max = ft_atoi(port_str + matches[2].rm_so);
-				if ((min < 1 || min > U16_MAX || max < 1 || max > U16_MAX) || (max < min))
-					goto exit_malformed_addr;
-
-				// printf("range: %d:%d\n", min, max);
-				port_val() = min;
-				port_min() = min;
-				port_max() = max;
-			}
-		}
-		else
-		{
-			port_val() = ports_min;
-			port_min() = ports_min;
-			port_max() = ports_max;
-		}
-		free((void *)original_str);
-		free(str);
-
-		it->it_current++;
-		it->generating = TRUE;
-		goto exit_ok;
-
-	exit_malformed_addr:
-		it->it_current++;
-		ft_dprintf(ft_stderr, "%s: malformed address, skipping\n", original_str);
-		free((void *)original_str);
-		free(str);
-		return address_iterator_next(it, addr);
-	exit_ok:
-	}
-
-	if (!generator_next(it, addr))
+	if (addr->is_ip)
 	{
-		// printf("generator says no more ip to generate\n");
-		it->generating = FALSE;
-		return address_iterator_next(it, addr);
+		out_addr = 0;
+		for (S32 i = 0; i < 4; i++)
+			out_addr |= (range_val(addr->ip[i]) << (8 * i));
 	}
-	// printf("processed\n");
-	return TRUE;
+	else
+		out_addr = addr->host.addr;
+	return out_addr;
 }

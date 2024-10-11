@@ -125,7 +125,7 @@ int main() {
     // Adresse de destination
     dest.sin_family = AF_INET;
     dest.sin_port = htons(port);  // Port destination
-    dest.sin_addr.s_addr = inet_addr("10.51.1.16");  // Adresse IP cible
+    dest.sin_addr.s_addr = inet_addr("142.250.201.174");  // Adresse IP cible
 
     // Construire l'en-tête IP
     iph->ihl = 5;  // Taille de l'en-tête IP

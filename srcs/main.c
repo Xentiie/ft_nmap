@@ -6,12 +6,13 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/10 17:28:08 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/11 23:04:59 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ft_nmap.h"
 #include <stdlib.h>
+#include <regex.h>
 
 static const t_long_opt long_opts[] = {
 	{"file", TRUE, NULL, 'f'},
@@ -20,6 +21,7 @@ static const t_long_opt long_opts[] = {
 	{"ports", TRUE, NULL, 'p'},
 	{"speedup", TRUE, NULL, 's'},
 	{"scan", TRUE, NULL, 'S'},
+	{0},
 };
 
 U16 ports_min, ports_max;
@@ -41,12 +43,16 @@ static void print_help();
 
 int main()
 {
+	const string range_reg_src = "^\\[([0-9]+)-([0-9]+)\\]$";
+
 	S64 i;
 	const_string dstaddr_file; /* file containing target addresses. NULL if no file has been specified */
+	regex_t range_reg;
 
 	AddressIterator it = address_iterator_init();
 
 	{
+		regmatch_t range_matches[3];
 		S32 opt;
 
 		dstaddr_file = NULL;
@@ -54,6 +60,12 @@ int main()
 		ports_max = 1024;
 		thread_count = 1;
 		scan_type = S_NONE;
+
+		if (regcomp(&range_reg, range_reg_src, REG_EXTENDED) != 0)
+		{
+			ft_dprintf(ft_stderr, "%s: regex compilation error\n", ft_argv[0]);
+			goto exit_err;
+		}
 
 		while ((opt = ft_getopt_long(ft_argc, ft_argv, "f:hi:p:s:S:", long_opts, NULL)) != -1)
 		{
@@ -66,38 +78,54 @@ int main()
 			case 'i':
 				if (!address_iterator_ingest(it, ft_optarg))
 				{
-					ft_dprintf(ft_errno, "%s: out of memory\n", ft_argv[0]);
-					return 1;
+					if (ft_errno != 0)
+						ft_dprintf(ft_stderr, "%s: %s\n", ft_argv[0], ft_strerror2(ft_errno));
+					else
+						ft_dprintf(ft_stderr, "%s: malformed address: %s\n", ft_argv[0], ft_optarg);
+					goto optarg_err;
 				}
 				break;
 
 			case 'p':
-				if (!ft_str_isnbr((string)ft_optarg))
+				if (regexec(&range_reg, ft_optarg, array_len(range_matches), range_matches, 0) == REG_NOMATCH)
 				{
-					ft_dprintf(ft_errno, "%s: invalid argument: '%s'\n", ft_argv[0], ft_optarg);
-					return 1;
+					ft_dprintf(ft_stderr, "%s: invalid port range: '%s'\n", ft_argv[0], ft_optarg);
+					goto optarg_err;
 				}
-				i = ft_atoi(ft_optarg);
-				if (i < 1 || i > U16_MAX)
+
+				string str = ft_strdup(ft_optarg);
+				str[range_matches[1].rm_eo] = '\0';
+				str[range_matches[2].rm_eo] = '\0';
+				if (!ft_str_isdigit(str + range_matches[1].rm_so) || !ft_str_isdigit(str + range_matches[2].rm_so))
 				{
-					ft_dprintf(ft_errno, "%s: invalid argument: '%s': out of range: 1 <= value <= %u\n", ft_argv[0], ft_optarg, U16_MAX);
-					return 1;
+					ft_dprintf(ft_stderr, "%s: invalid port range: '%s'\n", ft_argv[0], ft_optarg);
+					free(str);
+					goto optarg_err;
 				}
-				ports_min = i;
-				ports_max = i;
+				t_iv2 range = ivec2(
+					ft_atoi(str + range_matches[1].rm_so),
+					ft_atoi(str + range_matches[2].rm_so));
+				if ((range.x < 1 || range.x > U16_MAX || range.y < 1 || range.y > U16_MAX) || (range.y < range.x))
+				{
+					ft_dprintf(ft_stderr, "%s: invalid port range: '%s'\n", ft_argv[0], ft_optarg);
+					free(str);
+					goto optarg_err;
+				}
+				ports_min = range.x;
+				ports_max = range.y;
 				break;
 
 			case 's':
 				if (!ft_str_isnbr((string)ft_optarg))
 				{
 					ft_dprintf(ft_errno, "%s: invalid argument: '%s'\n", ft_argv[0], ft_optarg);
-					return 1;
+					goto optarg_err;
 				}
 				i = ft_atoi(ft_optarg);
 				if (i < 1 || i > U16_MAX)
 				{
 					ft_dprintf(ft_errno, "%s: invalid argument: '%s': out of range: 1 <= value <= 250\n", ft_argv[0], ft_optarg);
-					return 1;
+					goto optarg_err;
 				}
 				thread_count = i;
 				break;
@@ -113,7 +141,7 @@ int main()
 				if (i == array_len(scan_types_str))
 				{
 					ft_dprintf(ft_errno, "%s: invalid argument: '%s'\n", ft_argv[0], ft_optarg);
-					return 1;
+					goto optarg_err;
 				}
 				scan_type = (enum e_scan_type)i - 1;
 				break;
@@ -121,15 +149,16 @@ int main()
 			case '?':
 			case 'h':
 				print_help();
-				return 1;
+				regfree(&range_reg);
+				goto exit_ok;
 			}
-		}
 
-		if (ft_optind >= ft_argc && dstaddr_arg == NULL && dstaddr_file == NULL)
-		{
-			ft_dprintf(ft_stderr, "%s: usage error: no destination addresses specified\n", ft_argv[0]);
-			return 1;
+			continue;
+		optarg_err:
+			regfree(&range_reg);
+			goto exit_err;
 		}
+		regfree(&range_reg);
 
 		{ /* fill destination addresses */
 
@@ -137,8 +166,11 @@ int main()
 			{
 				if (!address_iterator_ingest(it, ft_argv[i]))
 				{
-					ft_dprintf(ft_errno, "%s: out of memory\n", ft_argv[0]);
-					return 1;
+					if (ft_errno != 0)
+						ft_dprintf(ft_stderr, "%s: %s\n", ft_argv[0], ft_strerror2(ft_errno));
+					else
+						ft_dprintf(ft_stderr, "%s: malformed address: '%s'\n", ft_argv[0], ft_argv[i]);
+					goto exit_err;
 				}
 			}
 
@@ -148,14 +180,14 @@ int main()
 				if (fd == (file)-1)
 				{
 					ft_dprintf(ft_stderr, "%s: couldn't open file '%s': %s\n", ft_argv[0], dstaddr_file, ft_strerror2(ft_errno));
-					return 1;
+					goto exit_err;
 				}
 
 				string file = (string)ft_readfile(fd, NULL);
 				if (file == NULL)
 				{
 					ft_dprintf(ft_stderr, "%s: out of memory\n", ft_argv[0]);
-					return 1;
+					goto exit_err;
 				}
 
 				string st = file;
@@ -164,9 +196,21 @@ int main()
 				{
 					if (*ptr == '\n')
 					{
+						if (st == ptr)
+						{
+							ptr++;
+							st++;
+							continue;
+						}
 						*ptr = '\0';
-						// if (!ingest_dst_addr(st))
-						//	ft_dprintf(ft_stderr, "%s: invalid address '%s'\n", ft_argv[0], st);
+						if (!address_iterator_ingest(it, st))
+						{
+							if (ft_errno != 0)
+								ft_dprintf(ft_stderr, "%s: %s\n", ft_argv[0], ft_strerror2(ft_errno));
+							else
+								ft_dprintf(ft_stderr, "%s: malformed address: %s\n", ft_argv[0], st);
+							goto exit_err;
+						}
 						st = ptr + 1;
 					}
 					ptr++;
@@ -176,21 +220,31 @@ int main()
 		}
 	}
 
-	ft_printf("Destination addresses (%u): [", dstaddr_cnt);
-	for (i = 0; i < dstaddr_cnt; i++)
+	if (address_iterator_total(it) == 0)
 	{
-		string addr_str = full_addr_to_str(dstaddr[i]);
-		if (addr_str == NULL)
-			addr_str = addr_to_str(dstaddr[i]);
-		ft_printf("%s", addr_str);
-		if (i != dstaddr_cnt - 1)
-			ft_printf(", ");
+		ft_dprintf(ft_stderr, "%s: no valid address specified\n", ft_argv[0]);
+		goto exit_err;
 	}
-	ft_printf("]\n");
 
 	ft_printf("Ports: %u-%u\n", ports_min, ports_max);
 	ft_printf("Thread count: %u\n", thread_count);
 	ft_printf("Scan method: %s (%d)\n", get_scan_type(), scan_type);
+
+	Address *addr;
+	while ((addr = address_iterator_next(it)) != NULL)
+	{
+		U32 ipaddr = address_get_ip(addr);
+		U16 port = addr->port.x;
+
+		printf("(%s) %s:%u\n", addr->source_str, addr_to_str(ipaddr), port);
+	}
+
+exit_ok:
+	address_iterator_destroy(it);
+	return 0;
+exit_err:
+	address_iterator_destroy(it);
+	return 1;
 }
 
 static void print_help()
@@ -202,7 +256,7 @@ static void print_help()
 Options:\n\
   <target>                     dns name or ip address\n\
   -f (--file) <filename>       file name containing list of IPs to scan\n\
-  -h --help                    print help and exit\n\
+  -h (--help)                  print help and exit\n\
   -i (--ip) <IP address>       ip address to scan\n\
   -p (--ports) <ports>         port range to scan\n\
   -s (--speedup) <threads>     number of parallel threads to use [1;250]\n\

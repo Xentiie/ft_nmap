@@ -6,12 +6,15 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 17:20:56 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/09 19:26:32 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/11 18:29:30 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ft_nmap.h"
 
+/*
+PAS THREAD SAFE
+*/
 string addr_to_str(U32 addr)
 {
 	static char buf[INET_ADDRSTRLEN];

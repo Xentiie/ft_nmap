@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 16:31:46 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/10 17:29:07 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/11 21:22:26 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -77,21 +77,30 @@ extern const const_string scan_types_str[7]; /* scan types names */
 
 /* address iterator */
 typedef struct s_addr_iterator *AddressIterator;
-typedef struct s_addr
+typedef struct s_address
 {
-	U32 addr;
-	U16 port;
+	string source_str;
+	t_iv3 port;
+	bool is_ip;
+	union
+	{
+		struct
+		{
+			string hostname;
+			U32 addr;
+		} host;
+		t_iv3 ip[4];
+	};
 } Address;
-
-typedef struct s_test_result *TestResult;
-
-TestResult make_test(enum e_scan_type test_type, Address addr);
 
 AddressIterator address_iterator_init();
 void address_iterator_destroy(AddressIterator it);
 bool address_iterator_ingest(AddressIterator it, const_string addr_str);
-U32 address_iterator_cnt(AddressIterator it);
-bool address_iterator_next(AddressIterator it, Address *addr);
+Address *address_iterator_next(AddressIterator it);
+U64 address_iterator_progress(AddressIterator it);
+U64 address_iterator_total(AddressIterator it);
+U32 address_get_ip(Address *addr);
+
 
 U16 checksum(U16 *ptr, U64 nbytes);
 string addr_to_str(U32 addr);
