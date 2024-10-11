@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 01:04:08 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/10 15:43:54 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/10 17:29:00 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -84,12 +84,12 @@ AddressIterator address_iterator_init(t_iv2 default_port_range)
 
 	if ((ret = regcomp(&it->ip_reg, ip_reg, REG_EXTENDED)) != 0)
 	{
-		//printf("couldn't compile regex %s\n", ip_reg);
+		// printf("couldn't compile regex %s\n", ip_reg);
 		goto exit_err;
 	}
 	if ((ret = regcomp(&it->range_reg, range_reg, REG_EXTENDED)) != 0)
 	{
-		//printf("couldn't compile regex %s\n", range_reg);
+		// printf("couldn't compile regex %s\n", range_reg);
 		goto exit_err;
 	}
 
@@ -130,6 +130,11 @@ bool address_iterator_ingest(AddressIterator it, const_string addr_str)
 		return FALSE;
 	it->addrs_n++;
 	return TRUE;
+}
+
+U32 address_iterator_cnt(AddressIterator it)
+{
+	return it->addrs_n;
 }
 
 #define port_val() it->generator.port.x
@@ -178,12 +183,12 @@ static bool generator_next(AddressIterator it, Address *addr)
 			}
 			if (done) /* yipi ! */
 				return FALSE;
-		
+
 			/* update les overflows */
 			for (S32 i = 3; i >= 0; i--)
 			{
 				if (ip_val(i) > ip_max(i))
-						ip_val(i) = ip_min(i);
+					ip_val(i) = ip_min(i);
 			}
 		}
 
@@ -203,14 +208,10 @@ bool address_iterator_next(AddressIterator it, Address *addr)
 		string str;
 
 		if (it->it_current >= it->addrs_n) /* on a tout fini !!!!!! */
-		{
-			//printf("DONE! did %u addresses\n", it->it_current);
 			return FALSE;
-		}
 
 		str = ft_strdup(it->addrs[it->it_current]);
 		original_str = ft_strdup(it->addrs[it->it_current]);
-		//printf("processing: %s\n", str);
 
 		string tmp = ft_strchr(str, ':'); // On coupe le :
 		if (tmp)
@@ -221,24 +222,20 @@ bool address_iterator_next(AddressIterator it, Address *addr)
 		/* check si l'entrée est un hostname, ou une addresse ip */
 		if (regexec(&it->ip_reg, str, array_len(matches), matches, 0) == REG_NOMATCH)
 		{ /* hostname */
-			//printf("addresse %s est un hostname\n", original_str);
 			it->generator.is_hostname = TRUE;
 			it->generator.addr = dns_resolve(str);
+			if (it->generator.addr == 0)
+				goto exit_malformed_addr;
 			port_val() = ports_min;
 			port_min() = ports_min;
 			port_max() = ports_max;
 		}
 		else
 		{ /* ip */
-			//printf("addresse %s est une ip\n", original_str);
 			it->generator.is_hostname = FALSE;
 			/* on parse chaque byte, séparés par le regex */
 			for (S32 i = 4; i > 0; i--)
 			{
-				string m = ft_substr(original_str, matches[i].rm_so, matches[i].rm_eo - matches[i].rm_so);
-				//printf("	(%d:%d) match: %s\n", matches[i].rm_so, matches[i].rm_eo, m);
-				free(m);
-
 				string byte_str = str + matches[i].rm_so;
 				str[matches[i].rm_eo] = '\0';
 
@@ -247,14 +244,7 @@ bool address_iterator_next(AddressIterator it, Address *addr)
 				{ /* nombre */
 					S32 n = ft_atoi(byte_str);
 					if (n < 0 || n > 255)
-					{
-						it->it_current++;
-						ft_dprintf(ft_stderr, "%s: malformed address, skipping\n", original_str);
-						free((void *)original_str);
-						free(str);
-						return address_iterator_next(it, addr);
-					}
-					//printf("	byte (%s) %d est un nombre: %d\n", byte_str, i, n);
+						goto exit_malformed_addr;
 					ip_val(i - 1) = n;
 					ip_min(i - 1) = n;
 					ip_max(i - 1) = n;
@@ -266,14 +256,8 @@ bool address_iterator_next(AddressIterator it, Address *addr)
 					S32 min = ft_atoi(byte_str + range_matches[1].rm_so);
 					S32 max = ft_atoi(byte_str + range_matches[2].rm_so);
 					if ((min < 0 || min > 255 || max < 0 || max > 255) || (max < min))
-					{
-						it->it_current++;
-						ft_dprintf(ft_stderr, "%s: malformed address, skipping\n", original_str);
-						free((void *)original_str);
-						free(str);
-						return address_iterator_next(it, addr);
-					}
-					//printf("	byte %d est une range: %d:%d\n", i, min, max);
+						goto exit_malformed_addr;
+					// printf("	byte %d est une range: %d:%d\n", i, min, max);
 					ip_val(i - 1) = min;
 					ip_min(i - 1) = min;
 					ip_max(i - 1) = max;
@@ -286,23 +270,23 @@ bool address_iterator_next(AddressIterator it, Address *addr)
 		string port_str = (string)ft_strchr(str, ':');
 		if (port_str)
 		{ /* port spécifié */
-			//printf("port specified\n");
-			if (*(port_str + 1) == '\0')
-			{ /* On tente de nous niquer */
-				it->it_current++;
-				ft_dprintf(ft_stderr, "%s: malformed address, skipping\n", original_str);
-				free((void *)original_str);
-				free(str);
-				return address_iterator_next(it, addr);
-			}
+			// printf("port specified\n");
+			if (*(port_str + 1) == '\0') /* On tente de nous niquer */
+				goto exit_malformed_addr;
 
 			port_str++;
 			if (regexec(&it->range_reg, port_str, array_len(matches), matches, 0) == REG_NOMATCH)
 			{ /* port simple */
-				port_val() = ft_atoi(port_str);
+				if (!ft_str_isdigit(port_str))
+					goto exit_malformed_addr;
+				S32 port = ft_atoi(port_str);
+				if (port < 0 || port > U16_MAX)
+					goto exit_malformed_addr;
+
+				port_val() = port;
 				port_min() = port_val();
 				port_max() = port_val();
-				//printf("simple port: %d\n", port_val());
+				// printf("simple port: %d\n", port_val());
 			}
 			else
 			{
@@ -311,15 +295,9 @@ bool address_iterator_next(AddressIterator it, Address *addr)
 				S32 min = ft_atoi(port_str + matches[1].rm_so);
 				S32 max = ft_atoi(port_str + matches[2].rm_so);
 				if ((min < 1 || min > U16_MAX || max < 1 || max > U16_MAX) || (max < min))
-				{
-					it->it_current++;
-					ft_dprintf(ft_stderr, "%s: malformed address, skipping\n", original_str);
-					free((void *)original_str);
-					free(str);
-					return address_iterator_next(it, addr);
-				}
+					goto exit_malformed_addr;
 
-				//printf("range: %d:%d\n", min, max);
+				// printf("range: %d:%d\n", min, max);
 				port_val() = min;
 				port_min() = min;
 				port_max() = max;
@@ -336,14 +314,23 @@ bool address_iterator_next(AddressIterator it, Address *addr)
 
 		it->it_current++;
 		it->generating = TRUE;
+		goto exit_ok;
+
+	exit_malformed_addr:
+		it->it_current++;
+		ft_dprintf(ft_stderr, "%s: malformed address, skipping\n", original_str);
+		free((void *)original_str);
+		free(str);
+		return address_iterator_next(it, addr);
+	exit_ok:
 	}
-	
+
 	if (!generator_next(it, addr))
 	{
-		//printf("generator says no more ip to generate\n");
+		// printf("generator says no more ip to generate\n");
 		it->generating = FALSE;
 		return address_iterator_next(it, addr);
 	}
-	//printf("processed\n");
+	// printf("processed\n");
 	return TRUE;
 }

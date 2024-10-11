@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/10 04:28:57 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/10 17:28:08 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,9 +27,6 @@ U8 thread_count;
 enum e_scan_type scan_type;
 
 U32 srcaddr;
-U32 *dstaddr;
-U32 dstaddr_cnt;
-U32 dstaddr_alloc;
 
 const const_string scan_types_str[] = {
 	"ALL",
@@ -45,22 +42,13 @@ static void print_help();
 int main()
 {
 	S64 i;
-	const_string dstaddr_arg;  /* ptr to an argument-specified destination (--ip)*/
 	const_string dstaddr_file; /* file containing target addresses. NULL if no file has been specified */
 
 	AddressIterator it = address_iterator_init();
-	Address addr;
-	address_iterator_ingest(it, "google.com:[1-10]");
-	address_iterator_ingest(it, "8.8.[0-7].[0-3]:[2-5]");
-	//address_iterator_ingest(it, "8.8.8.[0-255]");
-	while (address_iterator_next(it, &addr))
-		ft_printf("addr:%s port:%u\n", addr_to_str(addr.addr), addr.port);
-	return 0;
 
 	{
 		S32 opt;
 
-		dstaddr_arg = NULL;
 		dstaddr_file = NULL;
 		ports_min = 1;
 		ports_max = 1024;
@@ -76,7 +64,11 @@ int main()
 				break;
 
 			case 'i':
-				dstaddr_arg = ft_optarg;
+				if (!address_iterator_ingest(it, ft_optarg))
+				{
+					ft_dprintf(ft_errno, "%s: out of memory\n", ft_argv[0]);
+					return 1;
+				}
 				break;
 
 			case 'p':
@@ -139,32 +131,17 @@ int main()
 			return 1;
 		}
 
-		{	  /* fill destination addresses */
-			{ /* init buffer */
-				dstaddr_cnt = 0;
-				dstaddr_alloc = 4;
-				dstaddr = malloc(sizeof(U32) * dstaddr_alloc);
-				if (dstaddr == NULL)
+		{ /* fill destination addresses */
+
+			for (i = ft_optind; i < ft_argc; i++)
+			{
+				if (!address_iterator_ingest(it, ft_argv[i]))
 				{
-					ft_dprintf(ft_stderr, "%s: out of memory\n", ft_argv[0]);
+					ft_dprintf(ft_errno, "%s: out of memory\n", ft_argv[0]);
 					return 1;
 				}
 			}
 
-			if ((ft_argc - ft_optind) > 0)
-			{
-				for (i = ft_optind; i < ft_argc; i++)
-				{
-					//if (!ingest_dst_addr(ft_argv[i]))
-					//	ft_dprintf(ft_stderr, "%s: invalid address '%s'\n", ft_argv[0], ft_argv[i]);
-				}
-			}
-
-			if (dstaddr_arg != NULL)
-			{
-				//if (!ingest_dst_addr(dstaddr_arg))
-				//	ft_dprintf(ft_stderr, "%s: invalid address '%s'\n", ft_argv[0], dstaddr_arg);
-			}
 			if (dstaddr_file != NULL)
 			{
 				file fd = ft_fopen(dstaddr_file, "r");
@@ -188,7 +165,7 @@ int main()
 					if (*ptr == '\n')
 					{
 						*ptr = '\0';
-						//if (!ingest_dst_addr(st))
+						// if (!ingest_dst_addr(st))
 						//	ft_dprintf(ft_stderr, "%s: invalid address '%s'\n", ft_argv[0], st);
 						st = ptr + 1;
 					}

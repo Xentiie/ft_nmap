@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 16:31:46 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/10 16:07:39 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/10 17:29:07 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -70,14 +70,10 @@ extern U8 thread_count;			   /* number of threads */
 extern enum e_scan_type scan_type; /* scan type */
 
 /* variables */
-extern U32 srcaddr;		  /* source address */
-extern U32 *dstaddr;	  /* destination addresses, as a 32 bit unsigned integer */
-extern U32 dstaddr_cnt;	  /* destination addresses count */
-extern U32 dstaddr_alloc; /* destination addresses buffer allocation size */
+extern U32 srcaddr; /* source address */
 
 extern const const_string scan_types_str[7]; /* scan types names */
 #define get_scan_type() (scan_types_str[scan_type + 1])
-
 
 /* address iterator */
 typedef struct s_addr_iterator *AddressIterator;
@@ -87,16 +83,14 @@ typedef struct s_addr
 	U16 port;
 } Address;
 
-
-
 typedef struct s_test_result *TestResult;
 
 TestResult make_test(enum e_scan_type test_type, Address addr);
 
-
 AddressIterator address_iterator_init();
 void address_iterator_destroy(AddressIterator it);
 bool address_iterator_ingest(AddressIterator it, const_string addr_str);
+U32 address_iterator_cnt(AddressIterator it);
 bool address_iterator_next(AddressIterator it, Address *addr);
 
 U16 checksum(U16 *ptr, U64 nbytes);
