@@ -7,6 +7,17 @@
 #include <netinet/tcp.h>   // Pour struct tcphdr
 #include <unistd.h>
 #include <errno.h>
+#include <netdb.h>  // Pour getservbyport()
+
+// Fonction pour récupérer le nom du service associé à un numéro de port
+const char* get_service_name(int port, const char* protocol) {
+    struct servent *service = getservbyport(htons(port), protocol);
+    if (service) {
+        return service->s_name;  // Retourne le nom du service
+    }
+    return "Service inconnu";  // Retourne ceci si le service n'est pas trouvé
+}
+
 
 // Lecture des réponses TCP
 int read_tcp_messages(int sockfd) {
@@ -27,6 +38,8 @@ int read_tcp_messages(int sockfd) {
     struct tcphdr *tcp_hdr = (struct tcphdr *)(buffer + (ip_hdr->ihl * 4));
 
     // Vérifier les flags TCP
+    printf("Flags TCP : SYN=%d, ACK=%d, RST=%d\n", tcp_hdr->syn, tcp_hdr->ack, tcp_hdr->rst);
+    printf("Port source : %d, Port destination : %d\n", ntohs(tcp_hdr->source), ntohs(tcp_hdr->dest));
     if (tcp_hdr->syn && tcp_hdr->ack) {
         printf("SYN-ACK reçu de %s\n", inet_ntoa(sender.sin_addr));
         return 1; // Port ouvert
@@ -90,17 +103,15 @@ int get_local_ip(char *buffer) {
 
     inet_ntop(AF_INET, &name.sin_addr, buffer, 100);
     close(sock);
-    return 0;
-}
-
-int main() {
-    int port = 4242;
+    return 0;}
+    
+    int main() {
+    int port = 6665;
     int sock;
     char packet[4096], pseudo_packet[4096];
     struct sockaddr_in dest;
     struct iphdr *iph = (struct iphdr *)packet;
     struct tcphdr *tcph = (struct tcphdr *)(packet + sizeof(struct iphdr));
-
     printf("sizeof(struct iphdr) = %ld\n", sizeof(struct iphdr));  // 20 octets
     printf("sizeof(struct tcphdr) = %ld\n", sizeof(struct tcphdr));  // 20 octets
 
@@ -125,7 +136,7 @@ int main() {
     // Adresse de destination
     dest.sin_family = AF_INET;
     dest.sin_port = htons(port);  // Port destination
-    dest.sin_addr.s_addr = inet_addr("142.250.201.174");  // Adresse IP cible
+    dest.sin_addr.s_addr = inet_addr("10.11.4.13");  // Adresse IP cible
 
     // Construire l'en-tête IP
     iph->ihl = 5;  // Taille de l'en-tête IP
@@ -170,6 +181,8 @@ int main() {
         return 1;
     }
     printf("Paquet SYN envoyé avec succès.\n");
+    const char *service_name = get_service_name(port, "udp");
+    printf("Service pour le port %d  : %s\n", port, service_name);
 
     // Lire la réponse
     while (1) {
