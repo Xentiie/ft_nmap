@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/13 16:11:11 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/14 16:08:11 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/14 17:53:52 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,6 +38,16 @@ struct pseudo_header
 	U8 protocol;
 	U16 tcp_length;
 };
+
+const char *get_service_name(int port, const char *protocol)
+{
+	struct servent *service = getservbyport(htons(port), NULL);
+	if (service)
+	{
+		return service->s_name; // Retourne le nom du service
+	}
+	return "Service inconnu"; // Retourne ceci si le service n'est pas trouvé
+}
 
 int read_tcp_messages(int sockfd)
 {
@@ -90,7 +100,7 @@ void *run_test(t_thread_param *params)
 	while ((addr = address_iterator_next(params->it)) != NULL)
 	{
 		dstaddr = address_get_dst_ip(addr);
-		srcaddr = address_get_src_ip(addr);
+		srcaddr = use_custom_interface ? _srcaddr : address_get_src_ip(addr);
 
 		dest.sin_family = AF_INET;
 		dest.sin_port = htons(addr->port.x);
@@ -138,6 +148,8 @@ void *run_test(t_thread_param *params)
 			return NULL;
 		}
 		printf("Paquet SYN envoyé avec succès.\n");
+
+		printf("%d service: %s\n", addr->port.x, get_service_name(addr->port.x, "tcp"));
 
 		// Lire la réponse
 		while (1)

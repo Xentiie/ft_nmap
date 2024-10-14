@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/14 16:13:05 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/14 17:52:02 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,7 +81,7 @@ int main()
 		if (UNLIKELY(regcomp(&range_reg, range_reg_src, REG_EXTENDED) != 0))
 		{
 			ft_dprintf(ft_stderr, "%s: regex compilation error\n", ft_argv[0]);
-			goto exit_err;
+			return 1;
 		}
 
 		while ((opt = ft_getopt_long(ft_argc, ft_argv, "f:hi:I:p:s:S:", long_opts, NULL)) != -1)
@@ -103,7 +103,7 @@ int main()
 
 				if (getifaddrs(&ifaddr) == -1)
 				{
-					ft_dprintf(ft_stderr, "%s: getifaddrs: %s", ft_argv[0], strerror(errno));
+					ft_dprintf(ft_stderr, "%s: getifaddrs: %s\n", ft_argv[0], strerror(errno));
 					goto optarg_err;
 				}
 
@@ -155,10 +155,10 @@ int main()
 				}
 				i = ft_atoi(str + range_matches[1].rm_so);
 				j = ft_atoi(str + range_matches[2].rm_so);
+				free(str);
 				if ((i < 1 || i > U16_MAX || j < 1 || j > U16_MAX) || (j < i))
 				{
 					ft_dprintf(ft_stderr, "%s: invalid port range: '%s'\n", ft_argv[0], ft_optarg);
-					free(str);
 					goto optarg_err;
 				}
 				ports_min = i;
@@ -193,19 +193,18 @@ int main()
 			case 'h':
 				print_help();
 				regfree(&range_reg);
-				goto exit_ok;
+				return 0;
 			}
 
 			continue;
 		optarg_err:
 			regfree(&range_reg);
-			goto exit_err;
+			return 1;
 		}
 		regfree(&range_reg);
 
 		it = address_iterator_init(ports_min, ports_max);
 		{ /* fill destination addresses */
-
 			if (ip_arg)
 			{
 				if (!address_iterator_ingest(it, ip_arg))
@@ -254,6 +253,7 @@ int main()
 								ft_dprintf(ft_stderr, "%s: %s\n", ft_argv[0], ft_strerror2(ft_errno));
 							else
 								ft_dprintf(ft_stderr, "%s: malformed address: %s\n", ft_argv[0], st);
+							free(file);
 							ft_close(fd);
 							goto exit_err;
 						}
@@ -275,42 +275,75 @@ int main()
 
 	printf("Ports: %u-%u\n", ports_min, ports_max);
 	printf("Thread count: %u\n", thread_count);
-	printf("Scan method: %s (%d)\n", scan_to_str(scan_type), scan_type);
+	printf("Scan method: %s\n", scan_to_str(scan_type));
 
+	const S32 on = 1;
+	const t_time timeout = {.seconds = 2, .nanoseconds = 0};
+	if (thread_count == 0)
+	{
+		t_thread_param param;
+
+		param.it = it;
+		if ((param.sock = ft_socket(AF_INET, SOCK_RAW, IPPROTO_TCP)) == (filedesc)-1)
+		{
+			ft_dprintf(ft_stderr, "%s: couldn't open socket: %s\n", ft_argv[0], ft_strerror2(ft_errno));
+			goto exit_err;
+		}
+
+		if (setsockopt(param.sock, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) < 0)
+		{
+			ft_dprintf(ft_stderr, "%s: setsockopt: %s\n", ft_argv[0], ft_strerror2(ft_errno));
+			ft_close(param.sock);
+			goto exit_err;
+		}
+
+		if (setsockopt(param.sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
+		{
+			ft_dprintf(ft_stderr, "%s: setsockopt: %s\n", ft_argv[0], ft_strerror2(ft_errno));
+			ft_close(param.sock);
+			goto exit_err;
+		}
+
+		run_test(&param);
+	}
+	else
 	{
 		if (UNLIKELY((threads = malloc(sizeof(pthread_t) * thread_count)) == NULL) ||
 			UNLIKELY((thread_params = malloc(sizeof(t_thread_param) * thread_count)) == NULL))
 		{
 			ft_dprintf(ft_stderr, "%s: out of memory\n", ft_argv[0]);
+			free(threads);
 			goto exit_err;
 		}
 
-		S32 on = 1;
 		/* setup threads params */
-		for (U32 i = 0; i < thread_count; i++)
+		for (i = 0; i < thread_count; i++)
 		{
-			t_time timeout;
-			timeout.seconds = 2;
-			timeout.nanoseconds = 0;
-
 			thread_params[i].it = it;
 			if ((thread_params[i].sock = ft_socket(AF_INET, SOCK_RAW, IPPROTO_TCP)) == (filedesc)-1)
 			{
 				ft_dprintf(ft_stderr, "%s: couldn't open socket: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-				return 1;
+				goto thread_init_err;
 			}
 
 			if (setsockopt(thread_params[i].sock, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) < 0)
 			{
 				ft_dprintf(ft_stderr, "%s: setsockopt: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-				return 1;
+				goto thread_init_err;
 			}
 
 			if (setsockopt(thread_params[i].sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
 			{
 				ft_dprintf(ft_stderr, "%s: setsockopt: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-				return 1;
+				goto thread_init_err;
 			}
+			continue;
+		thread_init_err:
+			for (j = 0; j < i; j++)
+				ft_close(thread_params[i].sock);
+			free(threads);
+			free(thread_params);
+			goto exit_err;
 		}
 
 		/* launch threads */
@@ -322,6 +355,7 @@ int main()
 				{
 					pthread_kill(threads[j], SIGINT);
 					pthread_join(threads[i], NULL);
+					ft_close(thread_params[i].sock);
 				}
 				free(threads);
 				free(thread_params);
@@ -329,17 +363,15 @@ int main()
 				goto exit_err;
 			}
 		}
-	}
 
-	for (i = 0; i < thread_count; i++)
-	{
-		pthread_join(threads[i], NULL);
-		ft_close(thread_params[i].sock);
+		for (i = 0; i < thread_count; i++)
+		{
+			pthread_join(threads[i], NULL);
+			ft_close(thread_params[i].sock);
+		}
+		free(threads);
+		free(thread_params);
 	}
-	free(threads);
-	free(thread_params);
-
-exit_ok:
 	address_iterator_destroy(it);
 	return 0;
 exit_err:

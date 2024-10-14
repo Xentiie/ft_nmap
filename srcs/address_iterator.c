@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 01:04:08 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/14 16:14:16 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/14 17:52:49 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -167,6 +167,8 @@ exit_err:
 
 void address_iterator_destroy(AddressIterator it)
 {
+	for (U32 i = 0; i < it->addrs_n; i++)
+		free(it->addrs[i].source_str);
 	regfree(&it->ip_reg);
 	regfree(&it->range_reg);
 	free(it->addrs);
@@ -341,7 +343,7 @@ Address *address_iterator_next(AddressIterator it)
 	Address *addr;
 
 	it_lock(it);
-	if (it->addr_curr >= it->addrs_n)
+	if (it->progress >= it->total)
 	{
 		it_unlock(it);
 		return NULL;
