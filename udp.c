@@ -8,6 +8,7 @@
 #include <netinet/ip_icmp.h>   // Pour ICMP
 #include <unistd.h>
 #include <errno.h>
+#include <netdb.h>  // Pour getservbyport()
 
 // Fonction pour obtenir l'adresse IP locale
 int get_local_ip(char *buffer) {
@@ -64,6 +65,15 @@ unsigned short csum(unsigned short *ptr, int nbytes) {
     return answer;
 }
 
+// Fonction pour récupérer le nom du service associé à un numéro de port
+const char* get_service_name(int port, const char* protocol) {
+    struct servent *service = getservbyport(htons(port), protocol);
+    if (service) {
+        return service->s_name;  // Retourne le nom du service
+    }
+    return "Service inconnu";  // Retourne ceci si le service n'est pas trouvé
+}
+
 int main() {
     int sock;
     char packet[4096], buffer[4096];
@@ -77,6 +87,8 @@ int main() {
     }
     printf("Adresse IP locale : %s\n", source_ip);
 
+    int dest_port = 80;  // Port cible
+
     // Créer une socket brute pour envoyer et recevoir les paquets UDP
     sock = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
     if (sock < 0) {
@@ -89,7 +101,7 @@ int main() {
 
     // Adresse de destination
     dest.sin_family = AF_INET;
-    dest.sin_port = htons(80);  // Port destination
+    dest.sin_port = htons(dest_port);  // Port destination
     dest.sin_addr.s_addr = inet_addr("8.8.8.8");  // Adresse IP cible
 
     // Construire l'en-tête IP
@@ -112,9 +124,13 @@ int main() {
     // Construire l'en-tête UDP
     struct udphdr *udph = (struct udphdr *)(packet + sizeof(struct iphdr));
     udph->source = htons(12345);  // Port source
-    udph->dest = htons(80);  // Port destination
+    udph->dest = htons(dest_port);  // Port destination
     udph->len = htons(sizeof(struct udphdr));  // Longueur de l'en-tête UDP
     udph->check = 0;  // Somme de contrôle, peut être ignorée pour UDP
+
+    // Récupérer le nom du service pour le port cible
+    const char *service_name = get_service_name(dest_port, "udp");
+    printf("Service pour le port %d (UDP) : %s\n", dest_port, service_name);
 
     // Envoyer le paquet UDP
     if (sendto(sock, packet, sizeof(struct iphdr) + sizeof(struct udphdr), 0, (struct sockaddr *)&dest, sizeof(dest)) < 0) {
