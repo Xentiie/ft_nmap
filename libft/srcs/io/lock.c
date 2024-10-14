@@ -1,18 +1,25 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_fseek.c                                         :+:      :+:    :+:   */
+/*   lock.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/05/31 02:13:48 by reclaire          #+#    #+#             */
-/*   Updated: 2024/05/31 02:14:22 by reclaire         ###   ########.fr       */
+/*   Created: 2024/10/12 11:50:12 by reclaire          #+#    #+#             */
+/*   Updated: 2024/10/12 12:48:48 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "libft_int.h"
+#include "file.h"
 
-U64 ft_fseek(file fd, U64 offset, U8 flag)
+void ft_ffilelock(t_file *file)
 {
-	
+	if (file->locked)
+		pthread_mutex_lock(&file->mut);
+}
+
+void ft_ffileunlock(t_file *file)
+{
+	if (file->locked)
+		pthread_mutex_unlock(&file->mut);
 }

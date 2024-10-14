@@ -1,21 +1,21 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_fwrite.c                                        :+:      :+:    :+:   */
+/*   write.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/01/24 13:40:56 by reclaire          #+#    #+#             */
-/*   Updated: 2024/08/23 23:59:46 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/13 13:48:10 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "libft_int.h"
+#include "file.h"
 
-# if defined(FT_OS_WIN)
-#  include <windows.h>
+#if defined(FT_OS_WIN)
+#include <windows.h>
 
-S64	ft_fwrite(file fd, char *buffer, U64 size)
+S64 ft_write(file fd, char *buffer, U64 size)
 {
 	S64 bytes_read = 0;
 	if (WriteFile(fd, buffer, size, (LPDWORD)&bytes_read, NULL) == FALSE)
@@ -24,10 +24,10 @@ S64	ft_fwrite(file fd, char *buffer, U64 size)
 	__FTRETURN_OK(bytes_read);
 }
 
-# elif defined(FT_OS_LINUX) || defined(FT_OS_MAC)
-#  include <unistd.h>
+#elif defined(FT_OS_LINUX) || defined(FT_OS_MAC)
+#include <unistd.h>
 
-S64 ft_fwrite(file fd, char *buffer, U64 size)
+S64 ft_write(filedesc fd, char *buffer, U64 size)
 {
 	S64 bytes_read = write(fd, buffer, size);
 	if (bytes_read == -1)
@@ -38,4 +38,37 @@ S64 ft_fwrite(file fd, char *buffer, U64 size)
 	__FTRETURN_OK(bytes_read);
 }
 
-# endif
+#endif
+
+S64 ft_fwrite(t_file *file, char *buffer, U64 size)
+{
+	S64 ret;
+
+	ft_ffilelock(file);
+	if (!file->buffered)
+		ret = ft_write(file->fd, buffer, size);
+	else
+	{
+		if ((file->buff_cnt + size) < file->buff_size)
+		{
+			ft_memcpy(file->buff + file->buff_cnt, buffer, size);
+			file->buff_cnt += size;
+			if (ft_strnchr(file->buff, '\n', file->buff_cnt))
+				ft_fflush(file);
+			if (ft_errno == 0)
+				ret = size;
+			else
+				ret = -1;
+		}
+		else
+		{
+			ft_fflush(file);
+			if (ft_errno == 0)
+				ret = ft_write(file->fd, buffer, size);
+			else
+				ret = -1;
+		}
+	}
+	ft_ffileunlock(file);
+	return ret;
+}

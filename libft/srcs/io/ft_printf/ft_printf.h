@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/03/16 16:55:27 by reclaire          #+#    #+#             */
-/*   Updated: 2024/04/11 19:04:36 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/12 00:52:07 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,12 +74,12 @@ typedef union u_printf_part
 
 
 U64	ft_printf(const_string fmt, ...);
-U64 ft_dprintf(file fd, const_string fmt, ...);
+U64 ft_dprintf(filedesc fd, const_string fmt, ...);
 U64 ft_sprintf(string str, const_string fmt, ...);
 U64 ft_snprintf(string str, U64 n, const_string fmt, ...);
 
 U64 ft_vprintf(const_string fmt, va_list args);
-U64 ft_vdprintf(file fd, const_string fmt, va_list args);
+U64 ft_vdprintf(filedesc fd, const_string fmt, va_list args);
 U64 ft_vsprintf(string str, const_string fmt, va_list args);
 U64 ft_vsnprintf(string str, U64 n, const_string fmt, va_list args);
 

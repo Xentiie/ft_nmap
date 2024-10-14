@@ -1,21 +1,21 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_fread.c                                         :+:      :+:    :+:   */
+/*   read.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/01/22 20:19:41 by reclaire          #+#    #+#             */
-/*   Updated: 2024/08/23 23:59:37 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/12 12:28:43 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "libft_int.h"
+#include "file.h"
 
 # if defined(FT_OS_WIN)
 #  include <windows.h>
 
-S64	ft_fread(file fd, char *buffer, U64 size)
+S64	ft_read(file fd, char *buffer, U64 size)
 {
 	S64 bytes_read = 0;
 	if (UNLIKELY(ReadFile(fd, buffer, size, (LPDWORD)&bytes_read, NULL) == FALSE))
@@ -26,8 +26,10 @@ S64	ft_fread(file fd, char *buffer, U64 size)
 # elif defined(FT_OS_LINUX) || defined(FT_OS_MAC)
 #  include <unistd.h>
 
-S64 ft_fread(file fd, char *buffer, U64 size)
+S64 ft_read(filedesc fd, char *buffer, U64 size)
 {
+	if (buffer == NULL)
+		__FTRETURN_ERR(-1, FT_EINVPTR);
 	S64 bytes_read = read(fd, buffer, size);
 	if (UNLIKELY(bytes_read == -1))
 		__FTRETURN_ERR(-1, FT_ESYSCALL);
@@ -36,3 +38,7 @@ S64 ft_fread(file fd, char *buffer, U64 size)
 
 # endif
 
+S64 ft_fread(t_file *file, char *buffer, U64 size)
+{
+	return ft_read(file->fd, buffer, size);
+}

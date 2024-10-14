@@ -6,28 +6,37 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/01/15 04:01:02 by reclaire          #+#    #+#             */
-/*   Updated: 2024/05/19 23:33:12 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/12 12:34:37 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft_int.h"
+#include "io/file.h"
 
 #if defined(FT_OS_WIN)
-# include <windows.h>
+#include <windows.h>
+#define __thread
 #endif
 
-int				ft_argc = -1;
-const_string	*ft_argv = NULL;
-const_string	*ft_env = NULL;
+int ft_argc = -1;
+const_string *ft_argv = NULL;
+const_string *ft_env = NULL;
 
-S32	ft_errno;
+S32 *__ft_errno_location()
+{
+	static __thread S32 __ft_errno;
+	return &(__ft_errno);
+}
 
-file			ft_stdout;
-file			ft_stdin;
-file			ft_stderr;
+filedesc ft_stdin;
+filedesc ft_stdout;
+filedesc ft_stderr;
 
-__attribute__((constructor))
-void __init_libft(int argc, const_string *argv, const_string *env)
+t_file *ft_fstdin;
+t_file *ft_fstdout;
+t_file *ft_fstderr;
+
+__attribute__((constructor)) void __init_libft(int argc, const_string *argv, const_string *env)
 {
 	ft_argc = argc;
 	ft_argv = argv;
@@ -38,9 +47,25 @@ void __init_libft(int argc, const_string *argv, const_string *env)
 	ft_stdout = GetStdHandle(STD_OUTPUT_HANDLE);
 	ft_stderr = GetStdHandle(STD_ERROR_HANDLE);
 #elif defined(FT_OS_LINUX) || defined(FT_OS_MAC)
-	ft_stdin = (file)0;
-	ft_stdout = (file)1;
-	ft_stderr = (file)2;
+	ft_stdin = (filedesc)0;
+	ft_stdout = (filedesc)1;
+	ft_stderr = (filedesc)2;
 #endif
 
+	ft_fstdin = ft_fcreate(ft_stdin);
+	if (ft_fstdin == NULL)
+		exit(42);
+	ft_fstdout = ft_fcreate(ft_stdout);
+	if (ft_fstdout == NULL)
+		exit(42);
+	ft_fstderr = ft_fcreate(ft_stderr);
+	if (ft_fstderr == NULL)
+		exit(42);
+}
+
+__attribute__((destructor)) void __destroy_libft()
+{
+	ft_fdestroy(ft_fstdin);
+	ft_fdestroy(ft_fstdout);
+	ft_fdestroy(ft_fstderr);
 }

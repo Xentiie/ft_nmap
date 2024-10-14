@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/02/07 14:44:13 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/11 19:38:37 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/12 11:59:22 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -124,7 +124,7 @@ S32 ft_getopt_long(S32 argc, const_string *argv, const_string optstr, const t_lo
 		bool ambiguous = FALSE;
 		bool exact = FALSE;
 		S32 found_ind = 0;
-		t_long_opt *found = NULL;
+		const t_long_opt *found = NULL;
 		while (longopts[ind].name)
 		{
 			if (ft_strncmp(longopts[ind].name, nextchar, name_end - nextchar) == 0)

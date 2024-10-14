@@ -1,25 +1,19 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_putstr_fd.c                                     :+:      :+:    :+:   */
+/*   flush.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/02/24 14:24:08 by reclaire          #+#    #+#             */
-/*   Updated: 2024/02/11 23:03:55 by reclaire         ###   ########.fr       */
+/*   Created: 2024/10/12 11:48:16 by reclaire          #+#    #+#             */
+/*   Updated: 2024/10/12 11:51:45 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "libft_int.h"
+#include "file.h"
 
-void	ft_putstr_fd(string s, file fd)
+void ft_fflush(t_file *file)
 {
-	if (s == NULL)
-		__FTRETURN_ERR(, FT_EINVPTR);
-	while (*s)
-	{
-		if (ft_fwrite(fd, s++, 1) == -1)
-			__FTRETURN_ERR(, ft_errno);
-	}
-	__FTRETURN_OK();
+	ft_write(file->fd, file->buff, file->buff_cnt);
+	file->buff_cnt = 0;
 }

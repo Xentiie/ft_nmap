@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/02/11 19:47:30 by reclaire          #+#    #+#             */
-/*   Updated: 2024/08/28 16:16:55 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/12 00:52:57 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,10 +63,11 @@ typedef int wchar;
 typedef U8 bool;
 
 #if defined(FT_OS_WIN)
-typedef void *file;
+typedef void *filedesc;
 #elif defined(FT_OS_LINUX) || defined(FT_OS_MAC)
-typedef S32 file;
+typedef S32 filedesc;
 #endif
+typedef struct s_file t_file;
 
 typedef struct s_v2
 {

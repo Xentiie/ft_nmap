@@ -6,13 +6,13 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/02/14 19:30:56 by reclaire          #+#    #+#             */
-/*   Updated: 2024/02/15 20:12:07 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/12 00:52:07 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft_tests.h"
 
-file null_fd;
+filedesc null_fd;
 
 void test_init()
 {

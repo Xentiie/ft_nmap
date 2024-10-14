@@ -6,13 +6,13 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/09/01 22:55:52 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/09 18:50:04 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/12 12:07:27 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft_int.h"
 
-U8 *ft_readfile(file fd, U64 *out_size)
+U8 *ft_readfile(filedesc fd, U64 *out_size)
 {
 	U8 buffer[32768];
 	U64 alloc = sizeof(buffer);
@@ -25,7 +25,7 @@ U8 *ft_readfile(file fd, U64 *out_size)
 	}
 
 	S64 rd, total_rd = 0;
-	while ((rd = ft_fread(fd, (char *)buffer, sizeof(buffer))) > 0)
+	while ((rd = ft_read(fd, (char *)buffer, sizeof(buffer))) > 0)
 	{
 		if ((S64)alloc < total_rd + rd)
 		{

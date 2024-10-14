@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/15 23:26:42 by reclaire          #+#    #+#             */
-/*   Updated: 2024/06/29 17:21:50 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/12 00:52:07 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,7 +39,7 @@ typedef struct s_png_img
     t_list *text_data;
 }   t_png_img;
 
-t_png_img *ft_load_png(file f, bool verbose);
+t_png_img *ft_load_png(filedesc f, bool verbose);
 void ft_free_png_img(t_png_img *img);
 
 #endif

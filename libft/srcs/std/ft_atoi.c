@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/02/23 13:51:00 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/10 17:23:06 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/12 12:17:05 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,7 @@ S32	ft_atoi(const_string str)
 	if (str[i] == '-' || str[i] == '+')
 		i++;
 
-	while (ft_isdigit(str[i]) && str[i] != '\0' && result <= (S32_MAX + 1))
+	while (ft_isdigit(str[i]) && str[i] != '\0' && result <= ((U64)S32_MAX + 1))
 	{
 		result = result * 10 + (str[i] - '0');
 		i++;
