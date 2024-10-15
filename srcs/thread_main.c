@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/13 16:11:11 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/15 15:00:16 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/15 15:40:28 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,16 +57,21 @@ int read_tcp_messages(int sockfd, U8 scan_type)
 	// 0 port ferme
 	// 2 port filtre
 
+	bool received;
 	unsigned char buffer[4096];
 	struct sockaddr_in sender;
 	socklen_t sender_len = sizeof(sender);
+	received = TRUE;
 	int received_bytes = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender, &sender_len);
 	if (received_bytes < 0)
 	{
 		if (errno == EAGAIN || errno == EWOULDBLOCK)
-			return 0;
-		perror("Erreur de réception");
-		return -1;
+			received = FALSE;
+		else
+		{
+			perror("Erreur de réception");
+			return -1;
+		}
 	}
 
 	struct iphdr *ip_hdr = (struct iphdr *)buffer;
@@ -116,6 +121,8 @@ int read_tcp_messages(int sockfd, U8 scan_type)
 	}
 	else if (scan_type & S_FIN)
 	{
+		if (!received)
+			return 1;
 		if (tcp_hdr->rst)
 		{
 			printf("RST reçu de %s\n", inet_ntoa(sender.sin_addr));
@@ -139,9 +146,9 @@ int read_tcp_messages(int sockfd, U8 scan_type)
 }
 
 static U16 header_flgs[] = {
-	0x250, // SYN SCAN
-	0x50, // NULL SCAN
-	0x150, // FIN SCAN
+	0x250,	// SYN SCAN
+	0x50,	// NULL SCAN
+	0x150,	// FIN SCAN
 	0x2950, // XMAS SCAN
 	0x1050, // ACK SCAN
 };
@@ -207,27 +214,29 @@ void *run_test(t_thread_param *params)
 			ft_memcpy(pseudo_packet + sizeof(struct pseudo_header), tcph, sizeof(struct s_tcp_hdr));
 			tcph->check = checksum((U16 *)pseudo_packet, sizeof(struct pseudo_header) + sizeof(struct s_tcp_hdr));
 
-			// Envoyer le paquet SYN
 			int packet_size = sizeof(struct iphdr) + sizeof(struct s_tcp_hdr);
 			if (sendto(params->sock, packet, packet_size, 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
 			{
+				printf("%d\n", errno);
 				perror("Erreur d'envoi du paquet");
 				return NULL;
 			}
 
 			// Lire la réponse
 			int result;
-			for (U8 _i = 0; _i < 3; _i++)
+			result = read_tcp_messages(params->sock, 1 << s);
+			if (result == -1)
 			{
-				result = read_tcp_messages(params->sock, 1 << s);
-				if (result >= 0)
-					break;
+				printf("error\n");
+				return NULL;
 			}
+
 			char buff1[10] = {0};
 			char buff2[200] = {0};
 			scan_to_str(scan_type & (1 << s), buff1, sizeof(buff1));
 			addr_to_str2(dstaddr, buff2);
-			printf("(%.1f/100.0f) Scan %s (%#x) to %s:%u = %d\n", (F32)address_iterator_progress(params->it) / (F32)address_iterator_total(params->it) * 100.0f, buff1, scan_type & (1 << s), buff2, addr->port.x, result);
+			printf("(%.1f/100.0f) Scan %s (%#x) to %s:%u = %d with socket %d (%p)\n", (F32)address_iterator_progress(params->it) / (F32)address_iterator_total(params->it) * 100.0f, buff1, scan_type & (1 << s), buff2, addr->port.x, result, params->sock, params);
+			//printf("%u\n", addr->port.x);
 		}
 		free(addr);
 	}
