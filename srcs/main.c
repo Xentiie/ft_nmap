@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/15 10:31:05 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/15 13:57:05 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -275,10 +275,12 @@ int main()
 
 	printf("Ports: %u-%u\n", ports_min, ports_max);
 	printf("Thread count: %u\n", thread_count);
-	printf("Scan method: %s\n", scan_to_str(scan_type));
+	char buf[30] = {0};
+	scan_to_str(scan_type, buf, sizeof(buf));
+	printf("Scan method: %s\n", buf);
 
 	const S32 on = 1;
-	const t_time timeout = {.seconds = 2, .nanoseconds = 0};
+	const t_time timeout = {.seconds = 3, .nanoseconds = 0};
 	if (thread_count == 0)
 	{
 		t_thread_param param;

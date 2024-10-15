@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/14 11:07:17 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/15 11:26:46 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/15 12:26:56 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,32 @@
 #define S_ACK 0x10
 #define S_UDP 0x20
 #define S_ALL 0x3F
+
+struct s_tcp_hdr
+{
+	U16 source;
+	U16 dest;
+	U32 seq;
+	U32 ack_seq;
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+	U16 flags;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+	U16 doff : 4;
+	U16 res1 : 4;
+	U16 res2 : 2;
+	U16 urg : 1;
+	U16 ack : 1;
+	U16 psh : 1;
+	U16 rst : 1;
+	U16 syn : 1;
+	U16 fin : 1;
+#else
+#error "Adjust your <bits/endian.h> defines"
+#endif
+	U16 window;
+	U16 check;
+	U16 urg_ptr;
+};
 
 enum e_scan_result
 {
@@ -80,9 +106,5 @@ Returns 0 with `ft_errno != 0` on failure
 Takes care of error messages
 */
 U32 address_get_src_ip(Address *addr);
-
-/* pire cas: buffer de 9 requis */
-U64 scan_to_str(U8 type, string buffer, U64 size);
-U8 str_to_scan(const_string str);
 
 #endif

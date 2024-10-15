@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 16:31:46 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/14 22:14:39 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/15 11:47:27 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,7 +46,7 @@ typedef struct s_ip_header
 } t_ip_header;
 
 /* return NULL on failure */
-const_string scan_to_str(U8 type);
+void scan_to_str(U8 type, char buffer[], U64 size);
 /* return -1 on failure */
 U8 str_to_scan(const_string str);
 

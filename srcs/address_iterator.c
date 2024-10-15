@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 01:04:08 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/15 11:26:44 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/15 14:30:07 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -413,7 +413,7 @@ Address *address_iterator_next(AddressIterator it)
 	it->progress++;
 
 	it_unlock(it);
-	return addr;
+	return ft_memdup(addr, sizeof(Address));
 }
 
 U64 address_iterator_total(AddressIterator it)

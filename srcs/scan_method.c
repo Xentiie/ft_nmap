@@ -6,11 +6,12 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/14 11:44:06 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/14 22:31:28 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/15 13:57:37 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ft_nmap.h"
+#include <stdlib.h>
 
 const struct
 {
@@ -37,13 +38,17 @@ void scan_to_str(U8 type, char buffer[], U64 size)
 		return;
 	}
 
+	ft_memset(buffer, 0, size);
+
 	j = 0;
 	sl = FALSE;
-	for (U8 i = 0; i < 7; i++)
+	for (U8 i = 0; i < 6; i++)
 	{
 		if (type & scan_types_str[i].flg)
 		{
-			j += ft_snprintf(buffer + j, size - j, sl ? "/%s" : "%s", scan_types_str[i].str);
+			if (sl)
+				j += ft_strlcpy(buffer + j, "/", size - j);
+			j += ft_strlcpy(buffer + j, scan_types_str[i].str, size - j);
 			if (j >= size)
 				return;
 			sl = TRUE;
@@ -51,25 +56,42 @@ void scan_to_str(U8 type, char buffer[], U64 size)
 	}
 }
 
-U8 str_to_scan(const_string str)
+U8 str_to_scan(const_string _str)
 {
+	string sv;
+	string str;
 	U8 out;
 
+	if (UNLIKELY((str = ft_strdup(_str)) == NULL))
+		return 0;
+	sv = str;
 	if (*str == '\0' || *(str + 1) == '\0')
 		return 0;
 
 	out = 0;
-	for (U8 i = 0; i < 7; i++)
+	while (*str)
 	{
-		if (!ft_strncmp(str, scan_types_str[i].str, scan_types_str[i].len))
+		for (U8 i = 0; i < 7; i++)
 		{
-			out |= scan_types_str[i].flg;
-			str += scan_types_str[i].len;
-			if (*str == '\0')
-				break;
-			if (*str != '/')
-				return 0;
+			if (!ft_strncmp(str, scan_types_str[i].str, scan_types_str[i].len))
+			{
+				out |= scan_types_str[i].flg;
+				str += scan_types_str[i].len;
+				if (*str == '\0')
+					break;
+				if (*str)
+				{
+					if (*str != '/')
+					{
+						out = 0;
+						goto exit;
+					}
+					str++;
+				}
+			}
 		}
 	}
+exit:
+	free(sv);
 	return out;
 }
