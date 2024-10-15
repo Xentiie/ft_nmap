@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/13 16:11:11 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/15 18:11:30 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/16 01:17:27 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,26 +32,46 @@
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 
+typedef struct s_ip_header
+{
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+	U8 ihl : 4; // Internet header length
+	U8 ver : 4; // 4:IPv4 6:IPv6
+#else
+	U8 ver : 4; // 4:IPv4 6:IPv6
+	U8 ihl : 4; // Header length
+#endif
+	U8 tos;		  // Deprecated. 0
+	U16 len;	  // Total packet length
+	U16 id;		  // Identification
+	U16 flgs_frg; // Flags / frag off
+	U8 ttl;
+	U8 protocol;
+	U16 check; // Header checksum
+	U32 src_addr;
+	U32 dst_addr;
+	/* opts */
+} t_ip_header;
+
 struct pseudo_header
 {
-	S32 source_address;
-	S32 dest_address;
+	U32 source_address;
+	U32 dest_address;
 	U8 placeholder;
 	U8 protocol;
 	U16 tcp_length;
 };
 
-const char *get_service_name(int port, const char *protocol)
+static const_string get_service_name(U16 port, const_string protocol)
 {
-	struct servent *service = getservbyport(htons(port), protocol);
-	if (service)
-	{
-		return service->s_name; // Retourne le nom du service
-	}
-	return "Service inconnu"; // Retourne ceci si le service n'est pas trouvé
+	struct servent *service;
+
+	if ((service = getservbyport(htons(port), protocol)) != NULL)
+		return service->s_name;
+	return "Unknown service";
 }
 
-int read_tcp_messages(int sockfd, U8 scan_type, U16 pr)
+enum e_scan_result read_tcp_messages(filedesc sock, U8 scan_type, U16 pr)
 {
 
 	// 1 port ouvert
@@ -59,15 +79,17 @@ int read_tcp_messages(int sockfd, U8 scan_type, U16 pr)
 	// 2 port filtre
 
 	bool received;
-	unsigned char buffer[4096];
+	U8 buffer[4096];
 	struct sockaddr_in sender;
-	socklen_t sender_len = sizeof(sender);
 	struct iphdr *ip_hdr;
 	struct tcphdr *tcp_hdr;
+
 	do
 	{
+		socklen_t dummy = sizeof(sender);
+
 		received = TRUE;
-		int received_bytes = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender, &sender_len);
+		int received_bytes = recvfrom(sock, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender, &dummy);
 		if (received_bytes < 0)
 		{
 			if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -77,79 +99,44 @@ int read_tcp_messages(int sockfd, U8 scan_type, U16 pr)
 			}
 			else
 			{
-				perror("Erreur de réception");
-				return -1;
+				ft_dprintf(ft_stderr, "%s: recvfrom: %s\n", ft_argv[0], ft_strerror2(ft_errno));
+				return 0;
 			}
 		}
 		ip_hdr = (struct iphdr *)buffer;
 		tcp_hdr = (struct tcphdr *)(buffer + (ip_hdr->ihl * 4));
 	} while (htons(tcp_hdr->dest) != pr);
 
-	//| Type de scan   | Drapeaux activés     | Réponse si le port est **ouvert** | Réponse si le port est **fermé**  |
-	//|----------------|----------------------|-----------------------------------|-----------------------------------|
-	//| SYN Scan       | SYN                  | SYN-ACK, suivi d'un RST           | RST                               |
-	//| NULL Scan      | Aucun                | Aucune réponse                    | RST                               |
-	//| ACK Scan       | ACK                  | RST (non filtré)                  | Aucune réponse (filtré)           |
-	//| FIN Scan       | FIN                  | Aucune réponse                    | RST                               |
-	//| XMAS Scan      | FIN, PSH, URG        | Aucune réponse                    | RST                               |
-	//| UDP Scan       | UDP                  | Aucune réponse ou réponse UDP     | ICMP Port Unreachable (fermé)     |
+	/*
+	| Type de scan   | Drapeaux activés     | Réponse si le port est **ouvert** | Réponse si le port est **fermé**  |
+	|----------------|----------------------|-----------------------------------|-----------------------------------|
+	| SYN Scan       | SYN                  | SYN-ACK, suivi d'un RST           | Aucune réponse ou RST             |
+	| NULL Scan      | Aucun                | Aucune réponse                    | RST                               |
+	| ACK Scan       | ACK                  | RST (non filtré)                  | Aucune réponse (filtré)           |
+	| FIN Scan       | FIN                  | Aucune réponse                    | RST                               |
+	| XMAS Scan      | FIN, PSH, URG        | Aucune réponse                    | RST                               |
+	| UDP Scan       | UDP                  | Aucune réponse ou réponse UDP     | ICMP Port Unreachable (fermé)     |
+	*/
 
-	//*seq = sender.sin_port;
-	if (scan_type & S_SYN)
+	if (LIKELY(scan_type & S_SYN))
+		return UNLIKELY(received && tcp_hdr->rst) ? R_OPEN : R_CLOSED;
+	switch (scan_type)
 	{
-		if (!received)
-			return 0;
-		if (tcp_hdr->syn && tcp_hdr->ack)
-		{
-			//printf("SYN-ACK reçu de %s %u %u\n", inet_ntoa(sender.sin_addr), tcp_hdr->seq, tcp_hdr->ack_seq);
-			return 1; // Port ouvert
-		}
-		else if (tcp_hdr->rst)
-		{
-			//printf("RST reçu de %s\n", inet_ntoa(sender.sin_addr));
-			return 0; // Port fermé
-		}
-	}
-	else if (scan_type & S_NULL)
-	{
-		if (!received)
-			return 1;
-		if (tcp_hdr->rst)
-			return 0; // Port fermé
-	}
-	else if (scan_type & S_ACK)
-	{
-		if (!received)
-			return 0;
-		if (tcp_hdr->rst)
-			return 1; // Port ouvert
-	}
-	else if (scan_type & S_FIN)
-	{
-		if (!received)
-			return 1;
-		if (tcp_hdr->rst)
-		{
-			//printf("RST reçu de %s\n", inet_ntoa(sender.sin_addr));
-			return 0; // Port fermé
-		}
-	}
-	else if (scan_type & S_XMAS)
-	{
-		if (!received)
-			return 1;
-		if (tcp_hdr->rst)
-		{
-			//printf("RST reçu de %s\n", inet_ntoa(sender.sin_addr));
-			return 0; // Port fermé
-		}
-	}
+	case S_NULL:
+		return received ? R_CLOSED : R_CLOSED;
 
-	else /* if (scan_type == UDP_SCAN) */
-		// rein
+	case S_ACK:
+		return (received && tcp_hdr->rst) ? R_UNFILTERED : R_FILTERED;
 
-		return 2; // Pas de réponse pertinente
-	return 0;
+	case S_FIN:
+	case S_XMAS:
+		return received ? R_OPEN : R_CLOSED;
+
+	default:
+		// TODO: supprimer le print, sinon ca se voit trop quand y'a une erreur
+		ft_dprintf(ft_stderr, "????\n");
+		return -1;
+	}
 }
 
 static U16 header_flgs[] = {
@@ -167,10 +154,16 @@ void *run_test(t_thread_param *params)
 	t_ip_header *iph;
 	struct s_tcp_hdr *tcph;
 	Address *addr;
+	enum e_scan_result result;
+	U16 th_id;
 
 	U32 srcaddr;
 	U32 dstaddr;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
+	th_id = (U16)params;
+#pragma GCC diagnostic pop
 	iph = (t_ip_header *)packet;
 	tcph = (struct s_tcp_hdr *)(packet + sizeof(t_ip_header));
 	while ((addr = address_iterator_next(params->it)) != NULL)
@@ -195,7 +188,7 @@ void *run_test(t_thread_param *params)
 		iph->check = 0;
 		iph->check = checksum((U16 *)packet, sizeof(struct iphdr));
 
-		tcph->source = htons((U16)params); // Port source
+		tcph->source = htons(th_id);
 		tcph->dest = htons(addr->port.x);
 		tcph->seq = 0;
 		tcph->ack_seq = addr->port.x;
@@ -212,7 +205,7 @@ void *run_test(t_thread_param *params)
 
 		for (U8 s = 0; s < 5; s++)
 		{
-			if (!(scan_type & (1 << s)))
+			if (!(g_scans & (1 << s)))
 				continue;
 
 			tcph->flags = header_flgs[s];
@@ -228,25 +221,84 @@ void *run_test(t_thread_param *params)
 				return NULL;
 			}
 
-			// Lire la réponse
-			int result;
-			result = read_tcp_messages(params->sock, 1 << s, (U16)params);
-			if (result == -1)
-			{
-				printf("error\n");
-				return NULL;
-			}
+			{ /* Lire la réponse */
+				bool received;
+				U8 buffer[4096];
+				struct sockaddr_in sender;
+				struct iphdr *ip_hdr;
+				struct tcphdr *tcp_hdr;
 
-			if (result == 1)
-			{
+				do
+				{
+					socklen_t dummy = sizeof(sender);
 
-			char buff1[10] = {0};
-			scan_to_str(scan_type & (1 << s), buff1, sizeof(buff1));
-			printf("(%.1f/100.0f) Scan %s (%#x) to %s:%u = %d\n",
-				   (F32)address_iterator_progress(params->it) / (F32)address_iterator_total(params->it) * 100.0f,
-				   buff1, scan_type & (1 << s),
-				   addr->source_str, addr->port.x,
-				   result);
+					received = TRUE;
+					int received_bytes = recvfrom(params->sock, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender, &dummy);
+					if (received_bytes < 0)
+					{
+						if (errno == EAGAIN || errno == EWOULDBLOCK)
+						{
+							received = FALSE;
+							break;
+						}
+						else
+						{
+							ft_dprintf(ft_stderr, "%s: recvfrom: %s\n", ft_argv[0], ft_strerror2(ft_errno));
+							return NULL;
+						}
+					}
+					ip_hdr = (struct iphdr *)buffer;
+					tcp_hdr = (struct tcphdr *)(buffer + (ip_hdr->ihl * 4));
+				} while (htons(tcp_hdr->dest) != th_id);
+
+				/*
+				| Type de scan   | Drapeaux activés     | Réponse si le port est **ouvert** | Réponse si le port est **fermé**  |
+				|----------------|----------------------|-----------------------------------|-----------------------------------|
+				| SYN Scan       | SYN                  | SYN-ACK, suivi d'un RST           | Aucune réponse ou RST             |
+				| NULL Scan      | Aucun                | Aucune réponse                    | RST                               |
+				| ACK Scan       | ACK                  | RST (non filtré)                  | Aucune réponse (filtré)           |
+				| FIN Scan       | FIN                  | Aucune réponse                    | RST                               |
+				| XMAS Scan      | FIN, PSH, URG        | Aucune réponse                    | RST                               |
+				| UDP Scan       | UDP                  | Aucune réponse ou réponse UDP     | ICMP Port Unreachable (fermé)     |
+				*/
+
+				switch (g_scans)
+				{
+				case S_SYN:
+					result = UNLIKELY(received && tcp_hdr->syn && tcp_hdr->ack) ? R_OPEN : R_CLOSED;
+					break;
+
+				case S_NULL:
+					result = received ? R_CLOSED : R_CLOSED;
+					break;
+
+				case S_ACK:
+					result = (received && tcp_hdr->rst) ? R_UNFILTERED : R_FILTERED;
+					break;
+
+				case S_FIN:
+				case S_XMAS:
+					result = received ? R_OPEN : R_CLOSED;
+					break;
+
+				default:
+					// TODO: supprimer le print, sinon ca se voit trop quand y'a une erreur
+					ft_dprintf(ft_stderr, "????\n");
+					result = R_CLOSED;
+					break;
+				}
+
+				if (result == R_OPEN)
+				{
+					// TODO: output
+					char buff1[10] = {0};
+					scan_to_str(g_scans & (1 << s), buff1, sizeof(buff1));
+					printf("(%.1f/100.0f) Scan %s (%#x) to %s:%u = %d (%s)\n",
+						   (F32)address_iterator_progress(params->it) / (F32)address_iterator_total(params->it) * 100.0f,
+						   buff1, g_scans & (1 << s),
+						   addr->source_str, addr->port.x,
+						   result, get_service_name(addr->port.x, NULL));
+				}
 			}
 		}
 		free(addr);

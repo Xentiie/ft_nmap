@@ -6,11 +6,13 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/03 02:36:05 by reclaire          #+#    #+#             */
-/*   Updated: 2024/09/03 03:05:03 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/16 01:01:13 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft_int.h"
+
+//TODO: ft_str_isnbr / ft_str_isflt: nombre en puissance de 10 genre 1e8 ou 3.14e10
 
 bool ft_str_isascii(const_string str)
 {

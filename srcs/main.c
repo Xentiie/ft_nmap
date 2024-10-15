@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/15 17:19:47 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/16 01:00:21 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,6 +33,10 @@
 #include <netdb.h>
 #include <netinet/ip_icmp.h>
 
+U8 g_scans;
+bool g_use_custom_interface;
+U32 g_srcaddr;
+
 static const t_long_opt long_opts[] = {
 	{"file", TRUE, NULL, 'f'},
 	{"help", FALSE, NULL, 'h'},
@@ -41,14 +45,9 @@ static const t_long_opt long_opts[] = {
 	{"ports", TRUE, NULL, 'p'},
 	{"speedup", TRUE, NULL, 's'},
 	{"scan", TRUE, NULL, 'S'},
+	{"timeout", TRUE, NULL, 't'},
 	{0},
 };
-
-U8 thread_count;
-U8 scan_type;
-
-bool use_custom_interface;
-U32 _srcaddr;
 
 static void print_help();
 
@@ -58,9 +57,13 @@ int main()
 	U16 ports_min, ports_max;	   /* default port min/max */
 	const_string dstaddr_file;	   /* file containing target addresses. NULL if no file has been specified */
 	const_string ip_arg;		   /* additional ip address specified by --ip */
+	F32 timeout_flt;			   /* socket timeout */
 	pthread_t *threads;			   /* list of all threads */
 	t_thread_param *thread_params; /* list of threads params */
 
+	const S32 on = 1;	/* pour setsockopt */
+	t_time timeout;		/* sock timeout */
+	char buf[30] = {0}; /* pour scan_to_str */
 	AddressIterator it;
 	S64 i, j;
 
@@ -72,11 +75,12 @@ int main()
 
 		dstaddr_file = NULL;
 		ip_arg = NULL;
+		timeout_flt = 1.0f;
 		ports_min = 1;
 		ports_max = 1024;
 		thread_count = 0;
-		scan_type = S_ALL;
-		use_custom_interface = FALSE;
+		g_scans = S_ALL;
+		g_use_custom_interface = FALSE;
 
 		if (UNLIKELY(regcomp(&range_reg, range_reg_src, REG_EXTENDED) != 0))
 		{
@@ -84,7 +88,7 @@ int main()
 			return 1;
 		}
 
-		while ((opt = ft_getopt_long(ft_argc, ft_argv, "f:hi:I:p:s:S:", long_opts, NULL)) != -1)
+		while ((opt = ft_getopt_long(ft_argc, ft_argv, "f:hi:I:p:s:S:t:", long_opts, NULL)) != -1)
 		{
 			switch (opt)
 			{
@@ -107,7 +111,7 @@ int main()
 					goto optarg_err;
 				}
 
-				_srcaddr = 0;
+				g_srcaddr = 0;
 				/* search for specified interface */
 				for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
 				{
@@ -117,11 +121,11 @@ int main()
 					if (!ft_strcmp(ifa->ifa_name, ft_optarg))
 					{ /* found match */
 						sa = (struct sockaddr_in *)ifa->ifa_addr;
-						_srcaddr = sa->sin_addr.s_addr;
+						g_srcaddr = sa->sin_addr.s_addr;
 						break;
 					}
 				}
-				if (_srcaddr == 0)
+				if (g_srcaddr == 0)
 				{
 					ft_dprintf(ft_stderr, "%s: couldn't find interface: %s\n", ft_argv[0], ft_optarg);
 					freeifaddrs(ifaddr);
@@ -129,7 +133,7 @@ int main()
 				}
 				freeifaddrs(ifaddr);
 			}
-				use_custom_interface = TRUE;
+				g_use_custom_interface = TRUE;
 				break;
 
 			case 'p':
@@ -181,8 +185,22 @@ int main()
 				break;
 
 			case 'S':
-				scan_type = str_to_scan(ft_optarg);
-				if (scan_type == 0)
+				g_scans = str_to_scan(ft_optarg);
+				if (g_scans == 0)
+				{
+					ft_dprintf(ft_errno, "%s: invalid argument: '%s'\n", ft_argv[0], ft_optarg);
+					goto optarg_err;
+				}
+				break;
+
+			case 't':
+				if (!ft_str_isflt(ft_optarg))
+				{
+					ft_dprintf(ft_errno, "%s: invalid argument: '%s'\n", ft_argv[0], ft_optarg);
+					goto optarg_err;
+				}
+				timeout_flt = ft_atof(ft_optarg);
+				if (timeout_flt <= 0)
 				{
 					ft_dprintf(ft_errno, "%s: invalid argument: '%s'\n", ft_argv[0], ft_optarg);
 					goto optarg_err;
@@ -273,14 +291,13 @@ int main()
 		goto exit_err;
 	}
 
+	scan_to_str(g_scans, buf, sizeof(buf));
 	printf("Ports: %u-%u\n", ports_min, ports_max);
 	printf("Thread count: %u\n", thread_count);
-	char buf[30] = {0};
-	scan_to_str(scan_type, buf, sizeof(buf));
 	printf("Scan method: %s\n", buf);
 
-	const S32 on = 1;
-	const t_time timeout = {.seconds = 1, .nanoseconds = 0};
+	timeout.seconds = timeout_flt;
+	timeout.nanoseconds = (timeout_flt - timeout.seconds) * 1e9;
 	if (thread_count == 0)
 	{
 		t_thread_param param;
@@ -395,6 +412,7 @@ Options:\n\
   -I (--interface) <Interface>    interface to use\n\
   -p (--ports) <ports>            port range to scan\n\
   -s (--speedup) <threads>        number of parallel threads to use [1;250]\n\
-  -S (--scan)                     scan method to use. Can be any of SYN/NULL/FIN/XMAS/ACK/UDP\n",
+  -S (--scan)                     scan method to use. Can be any combination of SYN/NULL/FIN/XMAS/ACK/UDP\n\
+  -t (--timeout) <timeout>        sockets timeout\n",
 		ft_argv[0]);
 }

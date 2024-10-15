@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 01:04:08 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/15 15:49:48 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/16 01:02:15 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -337,11 +337,6 @@ exit_err:
 	free(byte_str);
 	free(str);
 	return FALSE;
-}
-
-void address_iterator_prepare(AddressIterator it)
-{
-	
 }
 
 Address *address_iterator_next(AddressIterator it)

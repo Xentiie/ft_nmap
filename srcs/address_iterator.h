@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/14 11:07:17 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/15 12:26:56 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/16 01:01:59 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,13 +47,6 @@ struct s_tcp_hdr
 	U16 window;
 	U16 check;
 	U16 urg_ptr;
-};
-
-enum e_scan_result
-{
-	R_CLOSED,
-	R_FILTERED,
-	R_OPEN,
 };
 
 typedef struct s_addr_iterator *AddressIterator;
