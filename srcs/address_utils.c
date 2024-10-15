@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 17:20:56 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/14 12:56:21 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/15 16:17:26 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,9 +35,9 @@ string addr_to_str(U32 addr)
 /*
 THREAD SAFE
 */
-string addr_to_str2(U32 addr, char *buf)
+string addr_to_str2(U32 addr, char *buf, U64 size)
 {
-	inet_ntop(AF_INET, &addr, buf, sizeof(buf));
+	inet_ntop(AF_INET, &addr, buf, size);
 	return buf;
 }
 

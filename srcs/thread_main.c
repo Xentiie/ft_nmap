@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/13 16:11:11 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/15 15:40:28 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/15 18:11:30 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,7 @@
 #include <netinet/in.h>
 
 #include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <netinet/tcp.h>
@@ -50,7 +51,7 @@ const char *get_service_name(int port, const char *protocol)
 	return "Service inconnu"; // Retourne ceci si le service n'est pas trouvé
 }
 
-int read_tcp_messages(int sockfd, U8 scan_type)
+int read_tcp_messages(int sockfd, U8 scan_type, U16 pr)
 {
 
 	// 1 port ouvert
@@ -61,21 +62,28 @@ int read_tcp_messages(int sockfd, U8 scan_type)
 	unsigned char buffer[4096];
 	struct sockaddr_in sender;
 	socklen_t sender_len = sizeof(sender);
-	received = TRUE;
-	int received_bytes = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender, &sender_len);
-	if (received_bytes < 0)
+	struct iphdr *ip_hdr;
+	struct tcphdr *tcp_hdr;
+	do
 	{
-		if (errno == EAGAIN || errno == EWOULDBLOCK)
-			received = FALSE;
-		else
+		received = TRUE;
+		int received_bytes = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender, &sender_len);
+		if (received_bytes < 0)
 		{
-			perror("Erreur de réception");
-			return -1;
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+			{
+				received = FALSE;
+				break;
+			}
+			else
+			{
+				perror("Erreur de réception");
+				return -1;
+			}
 		}
-	}
-
-	struct iphdr *ip_hdr = (struct iphdr *)buffer;
-	struct tcphdr *tcp_hdr = (struct tcphdr *)(buffer + (ip_hdr->ihl * 4));
+		ip_hdr = (struct iphdr *)buffer;
+		tcp_hdr = (struct tcphdr *)(buffer + (ip_hdr->ihl * 4));
+	} while (htons(tcp_hdr->dest) != pr);
 
 	//| Type de scan   | Drapeaux activés     | Réponse si le port est **ouvert** | Réponse si le port est **fermé**  |
 	//|----------------|----------------------|-----------------------------------|-----------------------------------|
@@ -86,38 +94,35 @@ int read_tcp_messages(int sockfd, U8 scan_type)
 	//| XMAS Scan      | FIN, PSH, URG        | Aucune réponse                    | RST                               |
 	//| UDP Scan       | UDP                  | Aucune réponse ou réponse UDP     | ICMP Port Unreachable (fermé)     |
 
+	//*seq = sender.sin_port;
 	if (scan_type & S_SYN)
 	{
+		if (!received)
+			return 0;
 		if (tcp_hdr->syn && tcp_hdr->ack)
 		{
-			printf("SYN-ACK reçu de %s\n", inet_ntoa(sender.sin_addr));
+			//printf("SYN-ACK reçu de %s %u %u\n", inet_ntoa(sender.sin_addr), tcp_hdr->seq, tcp_hdr->ack_seq);
 			return 1; // Port ouvert
 		}
 		else if (tcp_hdr->rst)
 		{
-			printf("RST reçu de %s\n", inet_ntoa(sender.sin_addr));
+			//printf("RST reçu de %s\n", inet_ntoa(sender.sin_addr));
 			return 0; // Port fermé
 		}
 	}
 	else if (scan_type & S_NULL)
 	{
+		if (!received)
+			return 1;
 		if (tcp_hdr->rst)
-		{
-			printf("RST reçu de %s\n", inet_ntoa(sender.sin_addr));
 			return 0; // Port fermé
-		}
 	}
 	else if (scan_type & S_ACK)
 	{
-		if (tcp_hdr->psh)
-		{
-			printf("									PSH\n");
-		}
+		if (!received)
+			return 0;
 		if (tcp_hdr->rst)
-		{
-			printf("RST reçu de %s\n", inet_ntoa(sender.sin_addr));
-			return 1; // Port fermé
-		}
+			return 1; // Port ouvert
 	}
 	else if (scan_type & S_FIN)
 	{
@@ -125,15 +130,17 @@ int read_tcp_messages(int sockfd, U8 scan_type)
 			return 1;
 		if (tcp_hdr->rst)
 		{
-			printf("RST reçu de %s\n", inet_ntoa(sender.sin_addr));
+			//printf("RST reçu de %s\n", inet_ntoa(sender.sin_addr));
 			return 0; // Port fermé
 		}
 	}
 	else if (scan_type & S_XMAS)
 	{
+		if (!received)
+			return 1;
 		if (tcp_hdr->rst)
 		{
-			printf("RST reçu de %s\n", inet_ntoa(sender.sin_addr));
+			//printf("RST reçu de %s\n", inet_ntoa(sender.sin_addr));
 			return 0; // Port fermé
 		}
 	}
@@ -188,10 +195,10 @@ void *run_test(t_thread_param *params)
 		iph->check = 0;
 		iph->check = checksum((U16 *)packet, sizeof(struct iphdr));
 
-		tcph->source = htons(42000); // Port source
+		tcph->source = htons((U16)params); // Port source
 		tcph->dest = htons(addr->port.x);
 		tcph->seq = 0;
-		tcph->ack_seq = 0;
+		tcph->ack_seq = addr->port.x;
 		tcph->window = htons(1024);
 		tcph->check = 0;
 		tcph->urg_ptr = 0;
@@ -217,26 +224,30 @@ void *run_test(t_thread_param *params)
 			int packet_size = sizeof(struct iphdr) + sizeof(struct s_tcp_hdr);
 			if (sendto(params->sock, packet, packet_size, 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
 			{
-				printf("%d\n", errno);
 				perror("Erreur d'envoi du paquet");
 				return NULL;
 			}
 
 			// Lire la réponse
 			int result;
-			result = read_tcp_messages(params->sock, 1 << s);
+			result = read_tcp_messages(params->sock, 1 << s, (U16)params);
 			if (result == -1)
 			{
 				printf("error\n");
 				return NULL;
 			}
 
+			if (result == 1)
+			{
+
 			char buff1[10] = {0};
-			char buff2[200] = {0};
 			scan_to_str(scan_type & (1 << s), buff1, sizeof(buff1));
-			addr_to_str2(dstaddr, buff2);
-			printf("(%.1f/100.0f) Scan %s (%#x) to %s:%u = %d with socket %d (%p)\n", (F32)address_iterator_progress(params->it) / (F32)address_iterator_total(params->it) * 100.0f, buff1, scan_type & (1 << s), buff2, addr->port.x, result, params->sock, params);
-			//printf("%u\n", addr->port.x);
+			printf("(%.1f/100.0f) Scan %s (%#x) to %s:%u = %d\n",
+				   (F32)address_iterator_progress(params->it) / (F32)address_iterator_total(params->it) * 100.0f,
+				   buff1, scan_type & (1 << s),
+				   addr->source_str, addr->port.x,
+				   result);
+			}
 		}
 		free(addr);
 	}

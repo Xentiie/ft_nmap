@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 01:04:08 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/15 14:30:07 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/15 15:49:48 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -412,8 +412,9 @@ Address *address_iterator_next(AddressIterator it)
 	}
 	it->progress++;
 
+	Address *addr_out = ft_memdup(addr, sizeof(Address));
 	it_unlock(it);
-	return ft_memdup(addr, sizeof(Address));
+	return addr_out;
 }
 
 U64 address_iterator_total(AddressIterator it)
@@ -423,7 +424,10 @@ U64 address_iterator_total(AddressIterator it)
 
 U64 address_iterator_progress(AddressIterator it)
 {
-	return it->progress;
+	it_lock(it);
+	U64 out = it->progress;
+	it_unlock(it);
+	return out;
 }
 
 U32 address_get_dst_ip(Address *addr)

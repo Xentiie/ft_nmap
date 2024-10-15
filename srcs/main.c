@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/15 15:17:00 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/15 17:19:47 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,7 +74,7 @@ int main()
 		ip_arg = NULL;
 		ports_min = 1;
 		ports_max = 1024;
-		thread_count = 1;
+		thread_count = 0;
 		scan_type = S_ALL;
 		use_custom_interface = FALSE;
 
@@ -280,7 +280,7 @@ int main()
 	printf("Scan method: %s\n", buf);
 
 	const S32 on = 1;
-	const t_time timeout = {.seconds = 10, .nanoseconds = 0};
+	const t_time timeout = {.seconds = 1, .nanoseconds = 0};
 	if (thread_count == 0)
 	{
 		t_thread_param param;

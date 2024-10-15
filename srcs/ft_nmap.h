@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 16:31:46 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/15 11:47:27 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/15 16:17:35 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -69,7 +69,7 @@ U16 checksum(U16 *ptr, U64 nbytes);
 /* PAS THREAD SAFE */
 string addr_to_str(U32 addr);
 /* THREAD SAFE */
-string addr_to_str2(U32 addr, char *buf);
+string addr_to_str2(U32 addr, char *buf, U64 size);
 
 /*
 Returns NULL on failure
