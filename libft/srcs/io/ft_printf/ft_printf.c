@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/03/16 16:43:53 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/12 12:16:17 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/14 22:58:45 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,10 +81,10 @@ static U64 write_interface_str(const_string str, U64 len, void *data)
 	struct s_wr_i_str_data *_data = (struct s_wr_i_str_data *)data;
 
 	U64 i = 0;
-	for (; i < len && i < _data->n; i++)
+	while (i < len && i < _data->n)
 	{
-		char c = str[i];
-		_data->str[i] = c;
+		_data->str[i] = str[i];
+		i++;
 	}
 	_data->str += i;
 	_data->n -= i;
@@ -120,6 +120,10 @@ U64 ft_vsnprintf(string str, U64 n, const_string fmt, va_list args)
 {
 	struct s_wr_i_str_data data = {n, str};
 	U64 out = printf_internal(fmt, args, write_interface_str, &data);
+	if (data.n == 0 && n != 0)
+		*(data.str - 1) = '\0';
+	else
+		out += write_interface_str("", 1, &data);
 	return out;
 }
 

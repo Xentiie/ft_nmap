@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 01:04:08 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/14 17:52:49 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/15 11:26:44 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,6 +57,7 @@ typedef struct s_addr_iterator
 
 	pthread_mutex_t lock;
 } *AddressIterator;
+
 
 #define range_val(range) (range).x
 #define range_min(range) (range).y
@@ -336,6 +337,11 @@ exit_err:
 	free(byte_str);
 	free(str);
 	return FALSE;
+}
+
+void address_iterator_prepare(AddressIterator it)
+{
+	
 }
 
 Address *address_iterator_next(AddressIterator it)

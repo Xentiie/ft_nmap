@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/14 17:52:02 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/15 10:31:05 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,7 +45,7 @@ static const t_long_opt long_opts[] = {
 };
 
 U8 thread_count;
-enum e_scan_type scan_type;
+U8 scan_type;
 
 bool use_custom_interface;
 U32 _srcaddr;
@@ -182,7 +182,7 @@ int main()
 
 			case 'S':
 				scan_type = str_to_scan(ft_optarg);
-				if (scan_type == (enum e_scan_type) - 1)
+				if (scan_type == 0)
 				{
 					ft_dprintf(ft_errno, "%s: invalid argument: '%s'\n", ft_argv[0], ft_optarg);
 					goto optarg_err;

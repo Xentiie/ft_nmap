@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   thread_main.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: swalter <swalter@student.42.fr>            +#+  +:+       +#+        */
+/*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/13 16:11:11 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/15 08:58:03 by swalter          ###   ########.fr       */
+/*   Updated: 2024/10/15 11:31:44 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <netinet/tcp.h>
+#include <netinet/udp.h>
 
 struct pseudo_header
 {
@@ -39,13 +40,13 @@ struct pseudo_header
 	U16 tcp_length;
 };
 
-int read_tcp_messages(int sockfd,  scan_type)
+int read_tcp_messages(int sockfd, U8 scan_type)
 {
-	
+
 	// 1 port ouvert
 	// 0 port ferme
 	// 2 port filtre
-	
+
 	unsigned char buffer[4096];
 	struct sockaddr_in sender;
 	socklen_t sender_len = sizeof(sender);
@@ -64,19 +65,16 @@ int read_tcp_messages(int sockfd,  scan_type)
 	struct iphdr *ip_hdr = (struct iphdr *)buffer;
 	struct tcphdr *tcp_hdr = (struct tcphdr *)(buffer + (ip_hdr->ihl * 4));
 
-	
-	// Type de scan   | Drapeaux activés     | Réponse si le port est **ouvert** | Réponse si le port est **fermé**  |
+	//| Type de scan   | Drapeaux activés     | Réponse si le port est **ouvert** | Réponse si le port est **fermé**  |
 	//|----------------|----------------------|-----------------------------------|-----------------------------------|
-//| SYN Scan       | SYN                  | SYN-ACK, suivi d'un RST           | RST                               |
-//| NULL Scan      | Aucun                | Aucune réponse                    | RST                               |
-//| ACK Scan       | ACK                  | RST (non filtré)                  | Aucune réponse (filtré)           |
-//| FIN Scan       | FIN                  | Aucune réponse                    | RST                               |
-//| XMAS Scan      | FIN, PSH, URG        | Aucune réponse                    | RST                               |
-//| UDP Scan       | UDP                  | Aucune réponse ou réponse UDP     | ICMP Port Unreachable (fermé)     |
-	
-	
-	
-	if(scan_type == SYN_SCAN)
+	//| SYN Scan       | SYN                  | SYN-ACK, suivi d'un RST           | RST                               |
+	//| NULL Scan      | Aucun                | Aucune réponse                    | RST                               |
+	//| ACK Scan       | ACK                  | RST (non filtré)                  | Aucune réponse (filtré)           |
+	//| FIN Scan       | FIN                  | Aucune réponse                    | RST                               |
+	//| XMAS Scan      | FIN, PSH, URG        | Aucune réponse                    | RST                               |
+	//| UDP Scan       | UDP                  | Aucune réponse ou réponse UDP     | ICMP Port Unreachable (fermé)     |
+
+	if (scan_type == SYN_SCAN)
 	{
 		if (tcp_hdr->syn && tcp_hdr->ack)
 		{
@@ -89,7 +87,7 @@ int read_tcp_messages(int sockfd,  scan_type)
 			return 0; // Port fermé
 		}
 	}
-	else if(scan_type == NULL_SCAN)
+	else if (scan_type == NULL_SCAN)
 	{
 		if (tcp_hdr->rst)
 		{
@@ -97,7 +95,7 @@ int read_tcp_messages(int sockfd,  scan_type)
 			return 0; // Port fermé
 		}
 	}
-	else if(scan_type == ACK_SCAN)
+	else if (scan_type == ACK_SCAN)
 	{
 		if (tcp_hdr->rst)
 		{
@@ -105,7 +103,7 @@ int read_tcp_messages(int sockfd,  scan_type)
 			return 0; // Port fermé
 		}
 	}
-	else if(scan_type == FIN_SCAN)
+	else if (scan_type == FIN_SCAN)
 	{
 		if (tcp_hdr->rst)
 		{
@@ -113,7 +111,7 @@ int read_tcp_messages(int sockfd,  scan_type)
 			return 0; // Port fermé
 		}
 	}
-	else if(scan_type == XMAS_SCAN)
+	else if (scan_type == XMAS_SCAN)
 	{
 		if (tcp_hdr->rst)
 		{
@@ -121,17 +119,11 @@ int read_tcp_messages(int sockfd,  scan_type)
 			return 0; // Port fermé
 		}
 	}
-	
-	else if(scan_type == UDP_SCAN)
-		//rein
-		
 
+	else if (scan_type == UDP_SCAN)
+		// rein
 
-
-		
-	
-	
-	return 2; // Pas de réponse pertinente
+		return 2; // Pas de réponse pertinente
 }
 
 void *run_test(t_thread_param *params)
@@ -144,10 +136,6 @@ void *run_test(t_thread_param *params)
 
 	U32 srcaddr;
 	U32 dstaddr;
-
-
-	params->	
-
 
 	iph = (t_ip_header *)packet;
 	tcph = (struct tcphdr *)(packet + sizeof(t_ip_header));
@@ -173,94 +161,93 @@ void *run_test(t_thread_param *params)
 		iph->check = 0;
 		iph->check = checksum((U16 *)packet, sizeof(struct iphdr));
 
-
-		
-
+		if (scan_type == ALL)
+		{
+			for (U32 i = S_SYN; i < _S_MAX; i++)
+			{
+			}
+		}
 		tcph->source = htons(42000); // Port source
 		tcph->dest = htons(addr->port.x);
 		tcph->seq = 0;
 		tcph->ack_seq = 0;
 		tcph->doff = sizeof(struct tcphdr) / 4;
-		//tcph->syn = 1; // Activer le flag SYN
+		// tcph->syn = 1; // Activer le flag SYN
 		tcph->window = htons(1024);
 		tcph->check = 0;
 		tcph->urg_ptr = 0;
 
-		switch (scan_type) {
-    case SYN_SCAN:
-        // Activer le flag SYN pour un scan SYN
-        tcph->syn = 1;
-        tcph->ack = 0;
-        tcph->fin = 0;
-        tcph->psh = 0;
-        tcph->urg = 0;
-        tcph->rst = 0;
-        break;
+		switch (scan_type)
+		{
+		case SYN_SCAN:
+			// Activer le flag SYN pour un scan SYN
+			tcph->syn = 1;
+			tcph->ack = 0;
+			tcph->fin = 0;
+			tcph->psh = 0;
+			tcph->urg = 0;
+			tcph->rst = 0;
+			break;
 
-    case NULL_SCAN:
-        // Aucune activation de flags pour un scan NULL (tous les flags sont à 0)
-        tcph->syn = 0;
-        tcph->ack = 0;
-        tcph->fin = 0;
-        tcph->psh = 0;
-        tcph->urg = 0;
-        tcph->rst = 0;
-        break;
+		case NULL_SCAN:
+			// Aucune activation de flags pour un scan NULL (tous les flags sont à 0)
+			tcph->syn = 0;
+			tcph->ack = 0;
+			tcph->fin = 0;
+			tcph->psh = 0;
+			tcph->urg = 0;
+			tcph->rst = 0;
+			break;
 
-    case ACK_SCAN:
-        // Activer uniquement le flag ACK pour un scan ACK
-        tcph->syn = 0;
-        tcph->ack = 1;
-        tcph->fin = 0;
-        tcph->psh = 0;
-        tcph->urg = 0;
-        tcph->rst = 0;
-        break;
+		case ACK_SCAN:
+			// Activer uniquement le flag ACK pour un scan ACK
+			tcph->syn = 0;
+			tcph->ack = 1;
+			tcph->fin = 0;
+			tcph->psh = 0;
+			tcph->urg = 0;
+			tcph->rst = 0;
+			break;
 
-    case FIN_SCAN:
-        // Activer uniquement le flag FIN pour un scan FIN
-        tcph->syn = 0;
-        tcph->ack = 0;
-        tcph->fin = 1;
-        tcph->psh = 0;
-        tcph->urg = 0;
-        tcph->rst = 0;
-        break;
+		case FIN_SCAN:
+			// Activer uniquement le flag FIN pour un scan FIN
+			tcph->syn = 0;
+			tcph->ack = 0;
+			tcph->fin = 1;
+			tcph->psh = 0;
+			tcph->urg = 0;
+			tcph->rst = 0;
+			break;
 
-    case XMAS_SCAN:
-        // Activer les flags FIN, PSH, et URG pour un scan XMAS
-        tcph->syn = 0;
-        tcph->ack = 0;
-        tcph->fin = 1;
-        tcph->psh = 1;
-        tcph->urg = 1;
-        tcph->rst = 0;
-        break;
+		case XMAS_SCAN:
+			// Activer les flags FIN, PSH, et URG pour un scan XMAS
+			tcph->syn = 0;
+			tcph->ack = 0;
+			tcph->fin = 1;
+			tcph->psh = 1;
+			tcph->urg = 1;
+			tcph->rst = 0;
+			break;
 
-    case ALL_SCAN:
-        // Activer tous les flags pour un scan ALL
-        tcph->syn = 1;
-        tcph->ack = 1;
-        tcph->fin = 1;
-        tcph->psh = 1;
-        tcph->urg = 1;
-        tcph->rst = 1;
-        break;
+		case ALL_SCAN:
+			// Activer tous les flags pour un scan ALL
+			tcph->syn = 1;
+			tcph->ack = 1;
+			tcph->fin = 1;
+			tcph->psh = 1;
+			tcph->urg = 1;
+			tcph->rst = 1;
+			break;
 
-    case UDP_SCAN:
-        // UDP n'utilise pas de flags TCP,
-        break;
+		case UDP_SCAN:
+			// UDP n'utilise pas de flags TCP,
+			break;
 
-    default:
-        
-        printf("Type de scan non reconnu\n");
-        break;
-	}
+		default:
 
-		
-
-
-		
+			printf("Type de scan non reconnu\n");
+			break;
+		}
 
 		struct pseudo_header psh;
 		psh.source_address = srcaddr;
@@ -295,7 +282,6 @@ void *run_test(t_thread_param *params)
 	}
 
 	return NULL;
-	
 }
 
 void *run_test_udp(t_thread_param *params)
@@ -306,11 +292,10 @@ void *run_test_udp(t_thread_param *params)
 	struct tcphdr *tcph;
 	Address *addr;
 	char packet[4096], buffer[4096];
-    struct sockaddr_in source;
-    socklen_t source_len = sizeof(source);
+	struct sockaddr_in source;
+	socklen_t source_len = sizeof(source);
 	U32 srcaddr;
 	U32 dstaddr;
-	
 
 	iph = (t_ip_header *)packet;
 	tcph = (struct tcphdr *)(packet + sizeof(t_ip_header));
@@ -385,12 +370,13 @@ void *run_test_udp(t_thread_param *params)
 				break;
 			}
 
-			if (iph_response->protocol == IPPROTO_UDP) {
-            printf("Réponse UDP reçue, le port est ouvert.\n");
-            break;
-        }
+			if (iph_response->protocol == IPPROTO_UDP)
+			{
+				printf("Réponse UDP reçue, le port est ouvert.\n");
+				break;
+			}
 
 			return NULL;
 		}
 	}
-}	
+}

@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 16:31:46 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/14 11:57:16 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/14 22:14:39 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,40 +45,23 @@ typedef struct s_ip_header
 	/* opts */
 } t_ip_header;
 
-
-
-enum e_scan_type
-{
-	S_ALL,
-	S_SYN,
-	S_NULL,
-	S_FIN,
-	S_XMAS,
-	S_ACK,
-	S_UDP,
-
-	_S_MAX
-};
 /* return NULL on failure */
-const_string scan_to_str(enum e_scan_type type);
+const_string scan_to_str(U8 type);
 /* return -1 on failure */
-enum e_scan_type str_to_scan(const_string str);
-
+U8 str_to_scan(const_string str);
 
 /* parameters */
-extern enum e_scan_type scan_type; /* scan type */
+extern U8 scan_type;			  /* scan type */
 extern bool use_custom_interface; /* custom interface specified, use _srcaddr as source address */
 extern U32 _srcaddr;
-
 
 /* threads */
 typedef struct s_thread_param
 {
 	AddressIterator it;
 	filedesc sock;
-}	t_thread_param;
+} t_thread_param;
 void *run_test(t_thread_param *it);
-
 
 /* utils */
 U16 checksum(U16 *ptr, U64 nbytes);
