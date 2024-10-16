@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/13 16:11:11 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/16 02:29:16 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/16 15:11:31 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,74 +71,6 @@ static const_string get_service_name(U16 port, const_string protocol)
 	return "Unknown service";
 }
 
-enum e_scan_result read_tcp_messages(filedesc sock, U8 scan_type, U16 pr)
-{
-
-	// 1 port ouvert
-	// 0 port ferme
-	// 2 port filtre
-
-	bool received;
-	U8 buffer[4096];
-	struct sockaddr_in sender;
-	struct iphdr *ip_hdr;
-	struct tcphdr *tcp_hdr;
-
-	do
-	{
-		socklen_t dummy = sizeof(sender);
-
-		received = TRUE;
-		int received_bytes = recvfrom(sock, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender, &dummy);
-		if (received_bytes < 0)
-		{
-			if (errno == EAGAIN || errno == EWOULDBLOCK)
-			{
-				received = FALSE;
-				break;
-			}
-			else
-			{
-				ft_dprintf(ft_stderr, "%s: recvfrom: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-				return 0;
-			}
-		}
-		ip_hdr = (struct iphdr *)buffer;
-		tcp_hdr = (struct tcphdr *)(buffer + (ip_hdr->ihl * 4));
-	} while (htons(tcp_hdr->dest) != pr);
-
-	/*
-	| Type de scan   | Drapeaux activés     | Réponse si le port est **ouvert** | Réponse si le port est **fermé**  |
-	|----------------|----------------------|-----------------------------------|-----------------------------------|
-	| SYN Scan       | SYN                  | SYN-ACK, suivi d'un RST           | Aucune réponse ou RST             |
-	| NULL Scan      | Aucun                | Aucune réponse                    | RST                               |
-	| ACK Scan       | ACK                  | RST (non filtré)                  | Aucune réponse (filtré)           |
-	| FIN Scan       | FIN                  | Aucune réponse                    | RST                               |
-	| XMAS Scan      | FIN, PSH, URG        | Aucune réponse                    | RST                               |
-	| UDP Scan       | UDP                  | Aucune réponse ou réponse UDP     | ICMP Port Unreachable (fermé)     |
-	*/
-
-	if (LIKELY(scan_type & S_SYN))
-		return UNLIKELY(received && tcp_hdr->rst) ? R_OPEN : R_CLOSED;
-	switch (scan_type)
-	{
-	case S_NULL:
-		return received ? R_CLOSED : R_CLOSED;
-
-	case S_ACK:
-		return (received && tcp_hdr->rst) ? R_UNFILTERED : R_FILTERED;
-
-	case S_FIN:
-	case S_XMAS:
-		return received ? R_OPEN : R_CLOSED;
-
-	default:
-		// TODO: supprimer le print, sinon ca se voit trop quand y'a une erreur
-		ft_dprintf(ft_stderr, "????\n");
-		return -1;
-	}
-}
-
 static U16 header_flgs[] = {
 	0x250,	// SYN SCAN
 	0x50,	// NULL SCAN
@@ -155,7 +87,9 @@ void *run_test(t_thread_param *params)
 	struct s_tcp_hdr *tcph;
 	Address *addr;
 	enum e_scan_result result;
+	U8 scan;
 	U16 th_id;
+	char buff1[10] = {0};
 
 	U32 srcaddr;
 	U32 dstaddr;
@@ -207,6 +141,8 @@ void *run_test(t_thread_param *params)
 		{
 			if (!(g_scans & (1 << s)))
 				continue;
+
+			scan = (1 << s);
 
 			tcph->flags = header_flgs[s];
 
@@ -262,23 +198,20 @@ void *run_test(t_thread_param *params)
 				| UDP Scan       | UDP                  | Aucune réponse ou réponse UDP     | ICMP Port Unreachable (fermé)     |
 				*/
 
-				switch (g_scans)
+				switch (scan)
 				{
 				case S_SYN:
 					result = UNLIKELY(received && tcp_hdr->syn && tcp_hdr->ack) ? R_OPEN : R_CLOSED;
-					break;
-
-				case S_NULL:
-					result = received ? R_CLOSED : R_CLOSED;
 					break;
 
 				case S_ACK:
 					result = (received && tcp_hdr->rst) ? R_UNFILTERED : R_FILTERED;
 					break;
 
+				case S_NULL:
 				case S_FIN:
 				case S_XMAS:
-					result = received ? R_OPEN : R_CLOSED;
+					result = !received ? R_OPEN : R_CLOSED;
 					break;
 
 				default:
@@ -291,10 +224,9 @@ void *run_test(t_thread_param *params)
 				if (result == R_OPEN)
 				{
 					// TODO: output
-					char buff1[10] = {0};
-					scan_to_str(g_scans & (1 << s), buff1, sizeof(buff1));
+					scan_to_str(scan & (1 << s), buff1, sizeof(buff1));
 					printf("Scan %s (%#x) to %s:%u = %d (%s)\n",
-						   buff1, g_scans & (1 << s),
+						   buff1, scan & (1 << s),
 						   addr->source_str, addr->port.x,
 						   result, get_service_name(addr->port.x, NULL));
 				}
