@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/02/11 14:52:06 by reclaire          #+#    #+#             */
-/*   Updated: 2024/09/27 15:20:00 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/16 01:21:01 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,7 +61,7 @@ const_string ft_strerror2(S32 err)
 	if (err > ENTRIES_LEN)
 		__FTRETURN_ERR((NULL), FT_ENOENT);
 
-	if (err == FT_ESYSCALL)
+	if ((err == FT_OK && errno != 0) || err == FT_ESYSCALL)
 		return strerror(errno);
 	else
 		return entries[err].desc;

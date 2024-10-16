@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/14 11:07:17 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/16 01:01:59 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/16 01:50:41 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -93,6 +93,10 @@ U64 address_iterator_progress(AddressIterator it);
 U64 address_iterator_total(AddressIterator it);
 /* No failure */
 U32 address_get_dst_ip(Address *addr);
+
+void address_iterator_progress_lock(AddressIterator it);
+void address_iterator_progress_unlock(AddressIterator it);
+void address_iterator_progress_wait(AddressIterator it);
 
 /*
 Returns 0 with `ft_errno != 0` on failure

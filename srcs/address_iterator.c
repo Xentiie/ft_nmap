@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 01:04:08 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/16 01:02:15 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/16 02:06:09 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,9 +55,10 @@ typedef struct s_addr_iterator
 	U64 progress;
 	U64 total;
 
-	pthread_mutex_t lock;
+	pthread_mutex_t global_lock;
+	pthread_mutex_t progress_lock;
+	pthread_cond_t progress_cond;
 } *AddressIterator;
-
 
 #define range_val(range) (range).x
 #define range_min(range) (range).y
@@ -100,12 +101,12 @@ static U32 dns_resolve(const_string addr)
 
 static void it_lock(AddressIterator it)
 {
-	pthread_mutex_lock(&it->lock);
+	pthread_mutex_lock(&it->global_lock);
 }
 
 static void it_unlock(AddressIterator it)
 {
-	pthread_mutex_unlock(&it->lock);
+	pthread_mutex_unlock(&it->global_lock);
 }
 
 AddressIterator address_iterator_init(U16 default_port_min, U16 default_port_max)
@@ -127,12 +128,14 @@ AddressIterator address_iterator_init(U16 default_port_min, U16 default_port_max
 	pthread_mutexattr_t attr;
 	pthread_mutexattr_init(&attr);
 	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK_NP);
-	pthread_mutexattr_destroy(&attr);
-	if (pthread_mutex_init(&it->lock, &attr) != 0)
+	if (UNLIKELY(pthread_mutex_init(&it->global_lock, &attr) != 0) ||
+		UNLIKELY(pthread_mutex_init(&it->progress_lock, &attr) != 0) ||
+		UNLIKELY(pthread_cond_init(&it->progress_cond, NULL) != 0))
 	{
-		ft_dprintf(ft_stderr, "%s: address iterator mutex init failed\n", ft_argv[0]);
+		ft_dprintf(ft_stderr, "%s: pthread init failed\n", ft_argv[0]);
 		goto exit_err;
 	}
+	pthread_mutexattr_destroy(&attr);
 
 	it->addrs_n = 0;
 	it->addr_curr = 0;
@@ -156,7 +159,7 @@ AddressIterator address_iterator_init(U16 default_port_min, U16 default_port_max
 
 	return it;
 exit_err:
-	pthread_mutex_destroy(&it->lock);
+	pthread_mutex_destroy(&it->global_lock);
 	if (it->ip_reg.__buffer)
 		regfree(&it->ip_reg);
 	if (it->range_reg.__buffer)
@@ -405,11 +408,29 @@ Address *address_iterator_next(AddressIterator it)
 		}
 		range_val(addr->port)++;
 	}
+	pthread_mutex_lock(&it->progress_lock);
 	it->progress++;
+	pthread_cond_signal(&it->progress_cond);
+	pthread_mutex_unlock(&it->progress_lock);
 
 	Address *addr_out = ft_memdup(addr, sizeof(Address));
 	it_unlock(it);
 	return addr_out;
+}
+
+void address_iterator_progress_lock(AddressIterator it)
+{
+	pthread_mutex_lock(&it->progress_lock);
+}
+
+void address_iterator_progress_unlock(AddressIterator it)
+{
+	pthread_mutex_unlock(&it->progress_lock);
+}
+
+void address_iterator_progress_wait(AddressIterator it)
+{
+	pthread_cond_wait(&it->progress_cond, &it->progress_lock);
 }
 
 U64 address_iterator_total(AddressIterator it)
@@ -419,9 +440,9 @@ U64 address_iterator_total(AddressIterator it)
 
 U64 address_iterator_progress(AddressIterator it)
 {
-	it_lock(it);
-	U64 out = it->progress;
-	it_unlock(it);
+	U64 out;
+
+	__atomic_load(&it->progress, &out, __ATOMIC_RELAXED);
 	return out;
 }
 

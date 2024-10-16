@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/13 16:11:11 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/16 01:17:27 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/16 02:29:16 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -293,8 +293,7 @@ void *run_test(t_thread_param *params)
 					// TODO: output
 					char buff1[10] = {0};
 					scan_to_str(g_scans & (1 << s), buff1, sizeof(buff1));
-					printf("(%.1f/100.0f) Scan %s (%#x) to %s:%u = %d (%s)\n",
-						   (F32)address_iterator_progress(params->it) / (F32)address_iterator_total(params->it) * 100.0f,
+					printf("Scan %s (%#x) to %s:%u = %d (%s)\n",
 						   buff1, g_scans & (1 << s),
 						   addr->source_str, addr->port.x,
 						   result, get_service_name(addr->port.x, NULL));

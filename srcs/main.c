@@ -6,13 +6,14 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/16 01:00:21 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/16 02:28:56 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ft_nmap.h"
 #include "libft/time.h"
 #include "libft/socket.h"
+#include "libft/ansi.h"
 
 #ifndef __USE_MISC
 #define __USE_MISC 1
@@ -26,6 +27,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/ioctl.h>
 
 #include <ifaddrs.h>
 #include <arpa/inet.h>
@@ -64,8 +66,21 @@ int main()
 	const S32 on = 1;	/* pour setsockopt */
 	t_time timeout;		/* sock timeout */
 	char buf[30] = {0}; /* pour scan_to_str */
+	t_iv2 term_size;	/* terminal size */
 	AddressIterator it;
 	S64 i, j;
+
+	{
+		struct winsize w;
+		ioctl(0, TIOCGWINSZ, &w);
+		term_size.x = w.ws_col;
+		term_size.y = w.ws_row;
+	}
+
+	printf(FT_CRESET);
+	printf("\n");
+	printf(FT_CURSOR_UP(1));
+	fflush(stdout);
 
 	{
 		const string range_reg_src = "^\\[([0-9]+)-([0-9]+)\\]$"; /* range regex pattern to parse '[x-y]' */
@@ -75,7 +90,7 @@ int main()
 
 		dstaddr_file = NULL;
 		ip_arg = NULL;
-		timeout_flt = 1.0f;
+		timeout_flt = 0.1f;
 		ports_min = 1;
 		ports_max = 1024;
 		thread_count = 0;
@@ -296,8 +311,10 @@ int main()
 	printf("Thread count: %u\n", thread_count);
 	printf("Scan method: %s\n", buf);
 
+	if (timeout_flt < 0.1f)
+		printf("Warning: timeout of %f is probably not enough\n", timeout_flt);
 	timeout.seconds = timeout_flt;
-	timeout.nanoseconds = (timeout_flt - timeout.seconds) * 1e9;
+	timeout.nanoseconds = (timeout_flt - timeout.seconds) * 1e6; // microseconds, pas nano
 	if (thread_count == 0)
 	{
 		t_thread_param param;
@@ -382,6 +399,17 @@ int main()
 				goto exit_err;
 			}
 		}
+
+		address_iterator_progress_lock(it);
+		while (address_iterator_progress(it) < address_iterator_total(it))
+		{
+			printf("\e[%dD\e[%dB", term_size.x, 1);
+			// printf(FT_CURSOR_BACK(10000) FT_CURSOR_UP(1) "%.3f/100.000\n", ((F32)address_iterator_progress(it) / (F32)address_iterator_total(it)) * 100.0f);
+			printf("%.3f/100.000", ((F32)address_iterator_progress(it) / (F32)address_iterator_total(it)) * 100.0f);
+			printf("\e[%dD\e[%dA", term_size.x, 1);
+			address_iterator_progress_wait(it);
+		}
+		address_iterator_progress_unlock(it);
 
 		for (i = 0; i < thread_count; i++)
 		{

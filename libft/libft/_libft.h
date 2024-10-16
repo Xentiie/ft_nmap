@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/02/11 19:56:09 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/12 00:36:23 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/16 01:36:07 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@
 # include "_os.h"
 # include "types.h"
 
-extern	int				ft_argc;
+extern	S32				ft_argc;
 extern	const_string	*ft_argv;
 extern	const_string	*ft_env;
 # define FT_INIT_ARGV(argc, argv, env) ft_argc=argc;ft_argv=argv;ft_env=env;
