@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/13 16:11:11 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/21 23:23:24 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/21 23:24:09 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -130,21 +130,9 @@ void *run_test(AddressIterator it)
 		tcph.source = htons(unique_id);
 		tcph.dest = htons(addr.port);
 		tcph.window = htons(1024);
+		tcph.ack_seq = addr.port;
 
-		{
-			struct pseudo_header psh;
-
-			psh.source_address = addr.srcaddr;
-			psh.dest_address = addr.dstaddr;
-			psh.placeholder = 0;
-			psh.protocol = IPPROTO_TCP;
-			psh.tcp_length = htons(sizeof(struct s_tcp_hdr));
-			ft_memcpy(pseudo_packet, &psh, sizeof(struct pseudo_header));
-			ft_memcpy(pseudo_packet + sizeof(struct pseudo_header), &tcph, sizeof(struct s_tcp_hdr));
-			tcph.check = checksum((U16 *)pseudo_packet, sizeof(pseudo_packet));
-		}
-
-		//uid = setuid(0);
+		// uid = setuid(0);
 		if ((sock = socket(AF_INET, SOCK_RAW, IPPROTO_TCP)) == (filedesc)-1)
 		{
 			//(void)(setuid(uid));
@@ -166,6 +154,19 @@ void *run_test(AddressIterator it)
 				continue;
 			tcph.flags = header_flgs[s];
 			scan = (1 << s);
+
+			{
+				struct pseudo_header psh;
+
+				psh.source_address = addr.srcaddr;
+				psh.dest_address = addr.dstaddr;
+				psh.placeholder = 0;
+				psh.protocol = IPPROTO_TCP;
+				psh.tcp_length = htons(sizeof(struct s_tcp_hdr));
+				ft_memcpy(pseudo_packet, &psh, sizeof(struct pseudo_header));
+				ft_memcpy(pseudo_packet + sizeof(struct pseudo_header), &tcph, sizeof(struct s_tcp_hdr));
+				tcph.check = checksum((U16 *)pseudo_packet, sizeof(pseudo_packet));
+			}
 
 			if (sendto(sock, &tcph, sizeof(tcph), 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
 			{
@@ -238,7 +239,7 @@ void *run_test(AddressIterator it)
 						   result, get_service_name(addr.port, NULL));
 				}
 				//*addr.result = result;
-				//printf("set %p:%d\n", addr.result, result);
+				// printf("set %p:%d\n", addr.result, result);
 			}
 		}
 		ft_close(sock);
