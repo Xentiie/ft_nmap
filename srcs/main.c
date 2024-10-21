@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
+/*   By: swalter <swalter@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/16 15:14:58 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/21 10:13:14 by swalter          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -340,7 +340,11 @@ int main()
 			goto exit_err;
 		}
 
-		run_test(&param);
+		
+		if(g_scans == S_UDP)
+			run_test_udp(&param);
+		else
+			run_test(&param);
 	}
 	else
 	{
