@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/14 11:07:17 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/16 01:50:41 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/21 14:06:23 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,48 +23,37 @@
 #define S_UDP 0x20
 #define S_ALL 0x3F
 
-struct s_tcp_hdr
+enum e_scan_result
 {
-	U16 source;
-	U16 dest;
-	U32 seq;
-	U32 ack_seq;
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-	U16 flags;
-#elif __BYTE_ORDER == __BIG_ENDIAN
-	U16 doff : 4;
-	U16 res1 : 4;
-	U16 res2 : 2;
-	U16 urg : 1;
-	U16 ack : 1;
-	U16 psh : 1;
-	U16 rst : 1;
-	U16 syn : 1;
-	U16 fin : 1;
-#else
-#error "Adjust your <bits/endian.h> defines"
-#endif
-	U16 window;
-	U16 check;
-	U16 urg_ptr;
+	R_CLOSED,
+	R_OPEN,
+	R_FILTERED,
+	R_UNFILTERED,
 };
 
 typedef struct s_addr_iterator *AddressIterator;
+
+/*
+Represente une plage d'addresses/ports.
+`results` est un array de resultats, de taille
+# Math: 1 + (port_{\text{max}} - port_{\text{min}}) \cdot \sum_{i=0}^{3} (ip_{\text{max}_i} - ip_{\text{min}_i})
+*/
 typedef struct s_address
 {
 	string source_str;
 	t_iv3 port;
-	bool is_ip;
-	union
-	{
-		struct
-		{
-			string hostname;
-			U32 addr;
-		} host;
-		t_iv3 ip[4];
-	};
+	t_iv3 ip[4];
+	enum e_scan_result *results;
 } Address;
+
+typedef struct s_scan_addr
+{
+	Address *addr;
+	U32 srcaddr;
+	U32 dstaddr;
+	U16 port;
+	enum e_scan_result *result;
+} ScanAddress;
 
 /*
 Returns NULL on failure
@@ -81,11 +70,13 @@ Takes care of error messages
 */
 bool address_iterator_ingest(AddressIterator it, const_string addr_str);
 
+bool address_iterator_prepare(AddressIterator it);
+
 /*
 Returns NULL when no more address
 No failure
 */
-Address *address_iterator_next(AddressIterator it);
+bool address_iterator_next(AddressIterator it, ScanAddress *out);
 
 /* No failure */
 U64 address_iterator_progress(AddressIterator it);
@@ -93,10 +84,6 @@ U64 address_iterator_progress(AddressIterator it);
 U64 address_iterator_total(AddressIterator it);
 /* No failure */
 U32 address_get_dst_ip(Address *addr);
-
-void address_iterator_progress_lock(AddressIterator it);
-void address_iterator_progress_unlock(AddressIterator it);
-void address_iterator_progress_wait(AddressIterator it);
 
 /*
 Returns 0 with `ft_errno != 0` on failure

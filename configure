@@ -44,10 +44,6 @@ while [[ $# -gt 0 ]]; do
 			esac
 			exit 0
 			;;
-        --glfw)
-            GLFW="true"
-            shift
-            ;;
         -*|--*)
             echo "Unknown option $1"
             exit 1

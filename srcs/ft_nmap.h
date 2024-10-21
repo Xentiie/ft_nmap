@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 16:31:46 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/16 00:49:38 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/18 16:53:20 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 #define FT_NMAP_H
 
 #include "libft/std.h"
+#include "libft/time.h"
 #include "libft/getopt.h"
 #include "libft/io.h"
 #include "libft/limits.h"
@@ -24,26 +25,14 @@
 
 #define array_len(x) (sizeof(x) / sizeof((x)[0]))
 
-enum e_scan_result
-{
-	R_CLOSED,
-	R_OPEN,
-	R_FILTERED,
-	R_UNFILTERED,
-};
-
 /* parameters */
 extern U8 g_scans;					/* scan type */
 extern bool g_use_custom_interface; /* custom interface specified, use g_srcaddr as source address */
 extern U32 g_srcaddr;
+extern t_time g_timeout;
 
 /* threads */
-typedef struct s_thread_param
-{
-	AddressIterator it;
-	filedesc sock;
-} t_thread_param;
-void *run_test(t_thread_param *it);
+void *run_test(AddressIterator it);
 
 /* utils */
 U16 checksum(U16 *ptr, U64 nbytes);

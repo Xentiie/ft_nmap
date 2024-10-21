@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: swalter <swalter@student.42.fr>            +#+  +:+       +#+        */
+/*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/21 10:13:14 by swalter          ###   ########.fr       */
+/*   Updated: 2024/10/21 23:21:50 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,6 +38,7 @@
 U8 g_scans;
 bool g_use_custom_interface;
 U32 g_srcaddr;
+t_time g_timeout;
 
 static const t_long_opt long_opts[] = {
 	{"file", TRUE, NULL, 'f'},
@@ -55,32 +56,36 @@ static void print_help();
 
 int main()
 {
-	U8 thread_count;			   /* number of threads */
-	U16 ports_min, ports_max;	   /* default port min/max */
-	const_string dstaddr_file;	   /* file containing target addresses. NULL if no file has been specified */
-	const_string ip_arg;		   /* additional ip address specified by --ip */
-	F32 timeout_flt;			   /* socket timeout */
-	pthread_t *threads;			   /* list of all threads */
-	t_thread_param *thread_params; /* list of threads params */
+	U8 thread_count;		   /* number of threads */
+	U16 ports_min, ports_max;  /* default port min/max */
+	const_string dstaddr_file; /* file containing target addresses. NULL if no file has been specified */
+	const_string ip_arg;	   /* additional ip address specified by --ip */
+	F32 timeout_flt;		   /* socket timeout */
+	pthread_t *threads;		   /* list of all threads */
 
-	const S32 on = 1;	/* pour setsockopt */
-	t_time timeout;		/* sock timeout */
 	char buf[30] = {0}; /* pour scan_to_str */
 	t_iv2 term_size;	/* terminal size */
 	AddressIterator it;
 	S64 i, j;
+
+	{ /* test root access */
+		uid_t uid;
+
+		if ((uid = setuid(0)) != 0)
+		{
+			ft_dprintf(ft_stderr, "%s: should be run with root privileges\n", ft_argv[0]);
+			return 1;
+		}
+		(void)setuid(uid);
+	}
 
 	{
 		struct winsize w;
 		ioctl(0, TIOCGWINSZ, &w);
 		term_size.x = w.ws_col;
 		term_size.y = w.ws_row;
+		(void)term_size;
 	}
-
-	printf(FT_CRESET);
-	printf("\n");
-	printf(FT_CURSOR_UP(1));
-	fflush(stdout);
 
 	{
 		const string range_reg_src = "^\\[([0-9]+)-([0-9]+)\\]$"; /* range regex pattern to parse '[x-y]' */
@@ -313,116 +318,46 @@ int main()
 
 	if (timeout_flt < 0.1f)
 		printf("Warning: timeout of %f is probably not enough\n", timeout_flt);
-	timeout.seconds = timeout_flt;
-	timeout.nanoseconds = (timeout_flt - timeout.seconds) * 1e6; // microseconds, pas nano
-	if (thread_count == 0)
+	g_timeout.seconds = timeout_flt;
+	g_timeout.nanoseconds = (timeout_flt - g_timeout.seconds) * 1e6; // microseconds, pas nano
+
+	if (!address_iterator_prepare(it))
 	{
-		t_thread_param param;
-
-		param.it = it;
-		if ((param.sock = ft_socket(AF_INET, SOCK_RAW, IPPROTO_TCP)) == (filedesc)-1)
-		{
-			ft_dprintf(ft_stderr, "%s: couldn't open socket: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-			goto exit_err;
-		}
-
-		if (setsockopt(param.sock, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) < 0)
-		{
-			ft_dprintf(ft_stderr, "%s: setsockopt: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-			ft_close(param.sock);
-			goto exit_err;
-		}
-
-		if (setsockopt(param.sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
-		{
-			ft_dprintf(ft_stderr, "%s: setsockopt: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-			ft_close(param.sock);
-			goto exit_err;
-		}
-
-		
-		if(g_scans == S_UDP)
-			run_test_udp(&param);
-		else
-			run_test(&param);
+		//TODO: 
+		return 1;
 	}
+
+	if (thread_count == 0)
+		run_test(it);
 	else
 	{
-		if (UNLIKELY((threads = malloc(sizeof(pthread_t) * thread_count)) == NULL) ||
-			UNLIKELY((thread_params = malloc(sizeof(t_thread_param) * thread_count)) == NULL))
+		if (UNLIKELY((threads = malloc(sizeof(pthread_t) * thread_count)) == NULL))
 		{
 			ft_dprintf(ft_stderr, "%s: out of memory\n", ft_argv[0]);
-			free(threads);
-			goto exit_err;
-		}
-
-		/* setup threads params */
-		for (i = 0; i < thread_count; i++)
-		{
-			thread_params[i].it = it;
-			if ((thread_params[i].sock = ft_socket(AF_INET, SOCK_RAW, IPPROTO_TCP)) == (filedesc)-1)
-			{
-				ft_dprintf(ft_stderr, "%s: couldn't open socket: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-				goto thread_init_err;
-			}
-
-			if (setsockopt(thread_params[i].sock, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) < 0)
-			{
-				ft_dprintf(ft_stderr, "%s: setsockopt: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-				goto thread_init_err;
-			}
-
-			if (setsockopt(thread_params[i].sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
-			{
-				ft_dprintf(ft_stderr, "%s: setsockopt: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-				goto thread_init_err;
-			}
-			continue;
-		thread_init_err:
-			for (j = 0; j < i; j++)
-				ft_close(thread_params[i].sock);
-			free(threads);
-			free(thread_params);
 			goto exit_err;
 		}
 
 		/* launch threads */
 		for (i = 0; i < thread_count; i++)
 		{
-			if (pthread_create(&threads[i], NULL, (void *(*)(void *))run_test, &thread_params[i]) != 0)
+			if (pthread_create(&threads[i], NULL, (void *(*)(void *))run_test, it) != 0)
 			{
 				for (j = 0; j < i; j++)
 				{
 					pthread_kill(threads[j], SIGINT);
 					pthread_join(threads[i], NULL);
-					ft_close(thread_params[i].sock);
 				}
 				free(threads);
-				free(thread_params);
 				ft_dprintf(ft_stderr, "%s: pthread_create: %s\n", ft_argv[0], ft_strerror2(ft_errno));
 				goto exit_err;
 			}
 		}
 
-		address_iterator_progress_lock(it);
-		while (address_iterator_progress(it) < address_iterator_total(it))
-		{
-			printf("\e[%dD\e[%dB", term_size.x, 1);
-			// printf(FT_CURSOR_BACK(10000) FT_CURSOR_UP(1) "%.3f/100.000\n", ((F32)address_iterator_progress(it) / (F32)address_iterator_total(it)) * 100.0f);
-			printf("%.3f/100.000", ((F32)address_iterator_progress(it) / (F32)address_iterator_total(it)) * 100.0f);
-			printf("\e[%dD\e[%dA", term_size.x, 1);
-			address_iterator_progress_wait(it);
-		}
-		address_iterator_progress_unlock(it);
-
 		for (i = 0; i < thread_count; i++)
-		{
 			pthread_join(threads[i], NULL);
-			ft_close(thread_params[i].sock);
-		}
 		free(threads);
-		free(thread_params);
 	}
+	//pthread_join(output_thread, NULL);
 	address_iterator_destroy(it);
 	return 0;
 exit_err:
