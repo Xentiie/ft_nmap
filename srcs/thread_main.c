@@ -1,12 +1,12 @@
-/* ************************************************************************** */
+* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
 /*   thread_main.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
+/*   By: swalter <swalter@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/13 16:11:11 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/16 15:11:31 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/21 10:21:46 by swalter          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -238,99 +238,114 @@ void *run_test(t_thread_param *params)
 	return NULL;
 }
 
-#if 0
+//#if 0
 void *run_test_udp(t_thread_param *params)
 {
-	struct sockaddr_in dest;
-	t_ip_header *iph;
-	struct tcphdr *tcph;
-	Address *addr;
-	char packet[4096], buffer[4096];
-	struct sockaddr_in source;
-	socklen_t source_len = sizeof(source);
-	U32 srcaddr;
-	U32 dstaddr;
+    struct sockaddr_in dest;
+    t_ip_header *iph;
+    char packet[4096], buffer[4096];
+    struct sockaddr_in source;
+    socklen_t source_len = sizeof(source);
+    Address *addr;
+    U32 srcaddr, dstaddr;
 
-	iph = (t_ip_header *)packet;
-	tcph = (struct tcphdr *)(packet + sizeof(t_ip_header));
-	while ((addr = address_iterator_next(params->it)) != NULL)
-	{
-		dstaddr = address_get_dst_ip(addr);
-		srcaddr = address_get_src_ip(addr);
+    // Création du socket brut pour capturer les réponses ICMP
+    int icmp_sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+    if (icmp_sock < 0) {
+        perror("Erreur de création du socket ICMP");
+        return NULL;
+    }
 
-		dest.sin_family = AF_INET;
-		dest.sin_port = htons(addr->port.x);
-		dest.sin_addr.s_addr = dstaddr;
+    while ((addr = address_iterator_next(params->it)) != NULL)
+    {
+        dstaddr = address_get_dst_ip(addr);
+        srcaddr = address_get_src_ip(addr);
 
-		iph->ihl = 5;
-		iph->ver = 4;
-		iph->tos = 0;
-		iph->len = htons(sizeof(struct iphdr) + sizeof(struct tcphdr));
-		iph->id = htonl(54321);
-		iph->flgs_frg = htons(0x4000);
-		iph->ttl = 255;
-		iph->protocol = IPPROTO_TCP;
-		iph->src_addr = srcaddr;
-		iph->dst_addr = dstaddr;
-		iph->check = 0;
-		iph->check = checksum((U16 *)packet, sizeof(struct iphdr));
+        // Initialisation de la destination
+        dest.sin_family = AF_INET;
+        dest.sin_port = htons(addr->port.x);
+        dest.sin_addr.s_addr = dstaddr;
 
-		struct udphdr *udph = (struct udphdr *)(packet + sizeof(struct iphdr));
-		udph->source = htons(12345);			  // Port source
-		udph->dest = htons(addr->port.x);		  // Port destination
-		udph->len = htons(sizeof(struct udphdr)); // Longueur de l'en-tête UDP
-		udph->check = 0;						  // Somme de contrôle, peut être ignorée pour UDP
+        // Préparation du paquet IP
+        iph = (t_ip_header *)packet;
+        iph->ihl = 5;
+        iph->ver = 4;
+        iph->tos = 0;
+        iph->len = htons(sizeof(struct iphdr) + sizeof(struct udphdr));  // Taille du paquet IP + UDP
+        iph->id = htonl(54321);
+        iph->flgs_frg = htons(0x4000); // DF flag activé (ne pas fragmenter)
+        iph->ttl = 255;
+        iph->protocol = IPPROTO_UDP;  // Utilisation de UDP
+        iph->src_addr = srcaddr;
+        iph->dst_addr = dstaddr;
+        iph->check = 0;
+        iph->check = checksum((U16 *)packet, sizeof(struct iphdr));  // Calcul du checksum IP
 
-		// Récupérer le nom du service pour le port cible
-		const char *service_name = get_service_name(addr->port.x, "udp");
-		printf("Service pour le port %d (UDP) : %s\n", addr->port.x, service_name);
+        // Préparation du paquet UDP
+        struct udphdr *udph = (struct udphdr *)(packet + sizeof(struct iphdr));
+        udph->source = htons(12345);              // Port source
+        udph->dest = htons(addr->port.x);         // Port destination
+        udph->len = htons(sizeof(struct udphdr)); // Longueur de l'en-tête UDP
+        udph->check = 0;                          // Somme de contrôle, peut être ignorée pour UDP
 
-		// Envoyer le paquet UDP
-		if (sendto(params->sock, packet, sizeof(struct iphdr) + sizeof(struct udphdr), 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
-		{
-			//TODO:
-			perror("Erreur d'envoi du paquet");
-			return NULL;
-		}
+        // Envoyer le paquet UDP en utilisant params->sock
+        if (sendto(params->sock, packet, sizeof(struct iphdr) + sizeof(struct udphdr), 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
+        {
+            perror("Erreur d'envoi du paquet");
+            return NULL;
+        }
 
-		printf("Paquet UDP envoyé avec succès.\n");
+        printf("Paquet UDP envoyé au port %d.\n", addr->port.x);
 
-		// Lire la réponse
-		while (1)
-		{
-			int bytes = recvfrom(params->sock, buffer, sizeof(buffer), 0, (struct sockaddr *)&source, &source_len);
-			if (bytes < 0)
-			{
-				if (errno == EAGAIN || errno == EWOULDBLOCK)
-				{
-					printf("Aucune réponse reçue, le port est probablement ouvert ou filtré.\n");
-					break;
-				}
-				else
-				{
-					perror("Erreur de réception");
-					break;
-				}
-			}
+        // Lire la réponse ICMP ou UDP avec le socket brut (icmp_sock)
+        while (1)
+        {
+            int bytes = recvfrom(icmp_sock, buffer, sizeof(buffer), 0, (struct sockaddr *)&source, &source_len);
+            if (bytes < 0)
+            {
+                if (errno == EAGAIN || errno == EWOULDBLOCK)
+                {
+                    printf("Aucune réponse reçue, le port est probablement ouvert ou filtré.\n");
+                    break;
+                }
+                else
+                {
+                    perror("Erreur de réception");
+                    break;
+                }
+            }
 
-			struct iphdr *iph_response = (struct iphdr *)buffer;
-			struct icmphdr *icmp_response = (struct icmphdr *)(buffer + (iph_response->ihl * 4));
+            struct iphdr *iph_response = (struct iphdr *)buffer;
+            if (iph_response->protocol == IPPROTO_ICMP)
+            {
+                struct icmphdr *icmp_response = (struct icmphdr *)(buffer + (iph_response->ihl * 4));
 
-			// Vérifier si c'est un message ICMP Port Unreachable
-			if (iph_response->protocol == IPPROTO_ICMP && icmp_response->type == ICMP_DEST_UNREACH && icmp_response->code == ICMP_PORT_UNREACH)
-			{
-				printf("Le port est fermé (ICMP Port Unreachable reçu).\n");
-				break;
-			}
+                // Vérifier si c'est un message ICMP Port Unreachable
+                if (icmp_response->type == ICMP_DEST_UNREACH && icmp_response->code == ICMP_PORT_UNREACH)
+                {
+                    // Extraire le paquet original encapsulé dans la réponse ICMP
+                    struct iphdr *original_ip = (struct iphdr *)(buffer + (iph_response->ihl * 4) + sizeof(struct icmphdr));
+                    struct udphdr *original_udp = (struct udphdr *)((unsigned char *)original_ip + (original_ip->ihl * 4));
 
-			if (iph_response->protocol == IPPROTO_UDP)
-			{
-				printf("Réponse UDP reçue, le port est ouvert.\n");
-				break;
-			}
+                    // Comparer l'IP de destination et le port UDP original
+                    if (original_ip->daddr == dstaddr && ntohs(original_udp->dest) == addr->port.x)
+                    {
+                        printf("Le port %d est fermé (ICMP Port Unreachable reçu).\n", addr->port.x);
+                        break;
+                    }
+                }
+            }
+            else if (iph_response->protocol == IPPROTO_UDP)
+            {
+                printf("Réponse UDP reçue, le port %d est ouvert.\n", addr->port.x);
+                break;
+            }
+        }
+    }
 
-			return NULL;
-		}
-	}
+    // Fermer le socket brut
+    close(icmp_sock);
+
+    return NULL;
 }
-#endif
+//#endif
