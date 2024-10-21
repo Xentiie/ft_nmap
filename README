@@ -1,6 +1,0 @@
-Je propose qu'on commence par tout faire sur 1 thread, et on s'en occupera plus tard (on pense a prévoir deja bien sur, mais on
-utilisera les thread après)
-
-test.c fonctionne
-udp.c fonctionne
-
