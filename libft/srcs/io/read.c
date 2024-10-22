@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/01/22 20:19:41 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/12 12:28:43 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/22 04:36:41 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,5 +40,11 @@ S64 ft_read(filedesc fd, char *buffer, U64 size)
 
 S64 ft_fread(t_file *file, char *buffer, U64 size)
 {
-	return ft_read(file->fd, buffer, size);
+	S64 ret;
+
+	if (UNLIKELY(!ft_ffilelock(file)))
+		return -1;
+	ret = ft_read(file->fd, buffer, size);
+	ft_ffileunlock(file);
+	return ret;
 }

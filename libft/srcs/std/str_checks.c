@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/03 02:36:05 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/16 01:01:13 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/22 04:49:37 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -126,7 +126,7 @@ int main()
 	{                                                                                                            \
 		bool v;                                                                                                  \
 		if ((v = func(str)) != (exp))                                                                            \
-			ft_dprintf(ft_stderr, "error with func '%s': '%s' returned %s\n", #func, str, v ? "true" : "false"); \
+			ft_fprintf(ft_fstderr, "error with func '%s': '%s' returned %s\n", #func, str, v ? "true" : "false"); \
 	} while (0)
 
 	do_test(ft_str_isascii, "abc", TRUE);

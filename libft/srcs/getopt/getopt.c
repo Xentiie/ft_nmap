@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/02/07 14:44:13 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/12 11:59:22 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/22 04:49:37 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -150,7 +150,7 @@ S32 ft_getopt_long(S32 argc, const_string *argv, const_string optstr, const t_lo
 		if (ambiguous && !exact)
 		{
 			if (ft_opterr)
-				ft_dprintf(ft_stderr, "%s: option `%s' is ambiguous\n", argv[0], argv[ft_optind]);
+				ft_fprintf(ft_fstderr, "%s: option `%s' is ambiguous\n", argv[0], argv[ft_optind]);
 			ret = 0;
 			goto failure_long;
 		}
@@ -158,7 +158,7 @@ S32 ft_getopt_long(S32 argc, const_string *argv, const_string optstr, const t_lo
 		if (found == NULL)
 		{
 			if (ft_opterr)
-				ft_dprintf(ft_stderr, "%s: unrecognized option '%s'\n", argv[0], argv[ft_optind]);
+				ft_fprintf(ft_fstderr, "%s: unrecognized option '%s'\n", argv[0], argv[ft_optind]);
 			ret = 0;
 			goto failure_long;
 		}
@@ -168,7 +168,7 @@ S32 ft_getopt_long(S32 argc, const_string *argv, const_string optstr, const t_lo
 			if (*name_end == '=')
 			{
 				if (ft_opterr)
-					ft_dprintf(ft_stderr, "%s: option '%s' doesn't allow an argument\n", argv[0], argv[ft_optind]);
+					ft_fprintf(ft_fstderr, "%s: option '%s' doesn't allow an argument\n", argv[0], argv[ft_optind]);
 				ret = found->flag_value;
 				goto failure_long;
 			}
@@ -185,7 +185,7 @@ S32 ft_getopt_long(S32 argc, const_string *argv, const_string optstr, const t_lo
 			else if (found->has_argument == required_argument)
 			{
 				if (ft_opterr)
-					ft_dprintf(ft_stderr, "%s: option '%s' requires an argument\n", argv[0], argv[ft_optind]);
+					ft_fprintf(ft_fstderr, "%s: option '%s' requires an argument\n", argv[0], argv[ft_optind]);
 				ret = found->flag_value;
 				nextchar += ft_strlen(nextchar);
 				ft_optind++;
@@ -218,7 +218,7 @@ S32 ft_getopt_long(S32 argc, const_string *argv, const_string optstr, const t_lo
 		{
 			// Not opt
 			if (ft_opterr)
-				ft_dprintf(ft_stderr, "%s: invalid option -- '%c'\n", argv[0], *nextchar);
+				ft_fprintf(ft_fstderr, "%s: invalid option -- '%c'\n", argv[0], *nextchar);
 			ret = *nextchar;
 			goto failure;
 		}
@@ -246,7 +246,7 @@ S32 ft_getopt_long(S32 argc, const_string *argv, const_string optstr, const t_lo
 				else
 				{
 					if (ft_opterr)
-						ft_dprintf(ft_stderr, "%s: option requires an argument -- '%c'\n", argv[0], ret);
+						ft_fprintf(ft_fstderr, "%s: option requires an argument -- '%c'\n", argv[0], ret);
 					nextchar++;
 					ft_optopt = ret;
 					return optstr[0] == ':' ? ':' : ft_optchr;

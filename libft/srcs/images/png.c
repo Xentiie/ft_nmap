@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/15 01:37:21 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/12 12:18:47 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/22 04:49:37 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -152,10 +152,10 @@ FUNCTION_HOT t_png_img *ft_load_png(filedesc f, bool verbose)
 		if (UNLIKELY(verbose))                                                                \
 		{                                                                                     \
 			if (ft_errno != FT_OK)                                                            \
-				ft_dprintf(ft_stderr, "(ft_errno: %d:%s) ", ft_errno, ft_strerror(ft_errno)); \
-			ft_dprintf(ft_stderr, "png error: ");                                             \
-			ft_dprintf(ft_stderr, __VA_ARGS__);                                               \
-			ft_dprintf(ft_stderr, "\n");                                                      \
+				ft_fprintf(ft_fstderr, "(ft_errno: %d:%s) ", ft_errno, ft_strerror(ft_errno)); \
+			ft_fprintf(ft_fstderr, "png error: ");                                             \
+			ft_fprintf(ft_fstderr, __VA_ARGS__);                                               \
+			ft_fprintf(ft_fstderr, "\n");                                                      \
 		}                                                                                     \
 		if (critical)                                                                         \
 			goto png_error;                                                                   \

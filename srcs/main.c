@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/21 23:21:50 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/22 05:01:13 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,10 +35,13 @@
 #include <netdb.h>
 #include <netinet/ip_icmp.h>
 
+bool g_has_capnetraw;
 U8 g_scans;
 bool g_use_custom_interface;
 U32 g_srcaddr;
 t_time g_timeout;
+
+void *run_test_udp(AddressIterator it);
 
 static const t_long_opt long_opts[] = {
 	{"file", TRUE, NULL, 'f'},
@@ -68,15 +71,24 @@ int main()
 	AddressIterator it;
 	S64 i, j;
 
-	{ /* test root access */
-		uid_t uid;
+	{
+		filedesc tmpsock;
 
-		if ((uid = setuid(0)) != 0)
-		{
-			ft_dprintf(ft_stderr, "%s: should be run with root privileges\n", ft_argv[0]);
-			return 1;
+		g_has_capnetraw = TRUE;
+		if ((tmpsock = socket(AF_INET, SOCK_RAW, IPPROTO_TCP)) == -1)
+		{ /* test root access */
+			uid_t uid;
+
+			if ((uid = setuid(0)) != 0)
+			{
+				ft_fprintf(ft_fstderr, "%s: should be run with CAP_NET_RAW or root privileges\n", ft_argv[0]);
+				return 1;
+			}
+			(void)setuid(uid);
+			g_has_capnetraw = FALSE;
 		}
-		(void)setuid(uid);
+		else
+			ft_close(tmpsock);
 	}
 
 	{
@@ -104,7 +116,7 @@ int main()
 
 		if (UNLIKELY(regcomp(&range_reg, range_reg_src, REG_EXTENDED) != 0))
 		{
-			ft_dprintf(ft_stderr, "%s: regex compilation error\n", ft_argv[0]);
+			ft_fprintf(ft_fstderr, "%s: regex compilation error\n", ft_argv[0]);
 			return 1;
 		}
 
@@ -127,7 +139,7 @@ int main()
 
 				if (getifaddrs(&ifaddr) == -1)
 				{
-					ft_dprintf(ft_stderr, "%s: getifaddrs: %s\n", ft_argv[0], strerror(errno));
+					ft_fprintf(ft_fstderr, "%s: getifaddrs: %s\n", ft_argv[0], strerror(errno));
 					goto optarg_err;
 				}
 
@@ -147,7 +159,7 @@ int main()
 				}
 				if (g_srcaddr == 0)
 				{
-					ft_dprintf(ft_stderr, "%s: couldn't find interface: %s\n", ft_argv[0], ft_optarg);
+					ft_fprintf(ft_fstderr, "%s: couldn't find interface: %s\n", ft_argv[0], ft_optarg);
 					freeifaddrs(ifaddr);
 					goto optarg_err;
 				}
@@ -159,21 +171,21 @@ int main()
 			case 'p':
 				if (regexec(&range_reg, ft_optarg, array_len(range_matches), range_matches, 0) == REG_NOMATCH)
 				{
-					ft_dprintf(ft_stderr, "%s: invalid port range: '%s'\n", ft_argv[0], ft_optarg);
+					ft_fprintf(ft_fstderr, "%s: invalid port range: '%s'\n", ft_argv[0], ft_optarg);
 					goto optarg_err;
 				}
 
 				string str = ft_strdup(ft_optarg);
 				if (UNLIKELY(str == NULL))
 				{
-					ft_dprintf(ft_stderr, "%s: out of memory\n", ft_argv[0]);
+					ft_fprintf(ft_fstderr, "%s: out of memory\n", ft_argv[0]);
 					goto optarg_err;
 				}
 				str[range_matches[1].rm_eo] = '\0';
 				str[range_matches[2].rm_eo] = '\0';
 				if (!ft_str_isdigit(str + range_matches[1].rm_so) || !ft_str_isdigit(str + range_matches[2].rm_so))
 				{
-					ft_dprintf(ft_stderr, "%s: invalid port range: '%s'\n", ft_argv[0], ft_optarg);
+					ft_fprintf(ft_fstderr, "%s: invalid port range: '%s'\n", ft_argv[0], ft_optarg);
 					free(str);
 					goto optarg_err;
 				}
@@ -182,7 +194,7 @@ int main()
 				free(str);
 				if ((i < 1 || i > U16_MAX || j < 1 || j > U16_MAX) || (j < i))
 				{
-					ft_dprintf(ft_stderr, "%s: invalid port range: '%s'\n", ft_argv[0], ft_optarg);
+					ft_fprintf(ft_fstderr, "%s: invalid port range: '%s'\n", ft_argv[0], ft_optarg);
 					goto optarg_err;
 				}
 				ports_min = i;
@@ -260,14 +272,14 @@ int main()
 				filedesc fd = ft_open(dstaddr_file, "r");
 				if (fd == (filedesc)-1)
 				{
-					ft_dprintf(ft_stderr, "%s: couldn't open file '%s': %s\n", ft_argv[0], dstaddr_file, ft_strerror2(ft_errno));
+					ft_fprintf(ft_fstderr, "%s: couldn't open file '%s': %s\n", ft_argv[0], dstaddr_file, ft_strerror2(ft_errno));
 					goto exit_err;
 				}
 
 				string file = (string)ft_readfile(fd, NULL);
 				if (file == NULL)
 				{
-					ft_dprintf(ft_stderr, "%s: out of memory\n", ft_argv[0]);
+					ft_fprintf(ft_fstderr, "%s: out of memory\n", ft_argv[0]);
 					ft_close(fd);
 					goto exit_err;
 				}
@@ -288,9 +300,9 @@ int main()
 						if (!address_iterator_ingest(it, st))
 						{
 							if (ft_errno != 0)
-								ft_dprintf(ft_stderr, "%s: %s\n", ft_argv[0], ft_strerror2(ft_errno));
+								ft_fprintf(ft_fstderr, "%s: %s\n", ft_argv[0], ft_strerror2(ft_errno));
 							else
-								ft_dprintf(ft_stderr, "%s: malformed address: %s\n", ft_argv[0], st);
+								ft_fprintf(ft_fstderr, "%s: malformed address: %s\n", ft_argv[0], st);
 							free(file);
 							ft_close(fd);
 							goto exit_err;
@@ -307,7 +319,7 @@ int main()
 
 	if (address_iterator_total(it) == 0)
 	{
-		ft_dprintf(ft_stderr, "%s: no valid address specified\n", ft_argv[0]);
+		ft_fprintf(ft_fstderr, "%s: no valid address specified\n", ft_argv[0]);
 		goto exit_err;
 	}
 
@@ -323,17 +335,22 @@ int main()
 
 	if (!address_iterator_prepare(it))
 	{
-		//TODO: 
+		// TODO:
 		return 1;
 	}
 
 	if (thread_count == 0)
-		run_test(it);
+	{
+		if (g_scans & S_UDP)
+			run_test_udp(it);
+		else
+			run_test(it);
+	}
 	else
 	{
 		if (UNLIKELY((threads = malloc(sizeof(pthread_t) * thread_count)) == NULL))
 		{
-			ft_dprintf(ft_stderr, "%s: out of memory\n", ft_argv[0]);
+			ft_fprintf(ft_fstderr, "%s: out of memory\n", ft_argv[0]);
 			goto exit_err;
 		}
 
@@ -348,7 +365,7 @@ int main()
 					pthread_join(threads[i], NULL);
 				}
 				free(threads);
-				ft_dprintf(ft_stderr, "%s: pthread_create: %s\n", ft_argv[0], ft_strerror2(ft_errno));
+				ft_fprintf(ft_fstderr, "%s: pthread_create: %s\n", ft_argv[0], ft_strerror2(ft_errno));
 				goto exit_err;
 			}
 		}
@@ -357,7 +374,7 @@ int main()
 			pthread_join(threads[i], NULL);
 		free(threads);
 	}
-	//pthread_join(output_thread, NULL);
+	// pthread_join(output_thread, NULL);
 	address_iterator_destroy(it);
 	return 0;
 exit_err:

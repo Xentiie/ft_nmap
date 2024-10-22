@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/01/17 13:54:18 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/14 12:07:03 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/22 04:21:36 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,7 @@ void	ft_close(filedesc fd)
 	__FTRETURN_OK();
 }
 
+/* socket close */
 void	ft_sclose(filedesc fd)
 {
 	
@@ -46,9 +47,11 @@ void	ft_sclose(filedesc fd)
 
 void ft_fdestroy(t_file *file)
 {
+	ft_ffilelock(file);
 	ft_fflush(file);
 	free(file->buff);
-	pthread_mutex_destroy(&file->mut);
+
+	__ft_flockcleanup(file);
 	free(file);
 }
 

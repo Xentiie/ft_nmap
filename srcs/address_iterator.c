@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 01:04:08 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/21 14:26:49 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/22 04:49:37 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,7 +82,7 @@ static U32 dns_resolve(const_string addr)
 
 	if ((i = getaddrinfo(addr, NULL, &hints, &res)) != 0)
 	{
-		ft_dprintf(ft_stderr, "%s: %s: %s\n", ft_argv[0], addr, gai_strerror(i));
+		ft_fprintf(ft_fstderr, "%s: %s: %s\n", ft_argv[0], addr, gai_strerror(i));
 		ft_errno = FT_ESYSCALL;
 		return 0;
 	}
@@ -92,7 +92,7 @@ static U32 dns_resolve(const_string addr)
 
 	if (!res)
 	{
-		ft_dprintf(ft_stderr, "%s: %s: no address associated with hostname\n", ft_argv[0], addr);
+		ft_fprintf(ft_fstderr, "%s: %s: no address associated with hostname\n", ft_argv[0], addr);
 		ft_errno = FT_EINVOP;
 		return 0;
 	}
@@ -137,7 +137,7 @@ AddressIterator address_iterator_init(U16 default_port_min, U16 default_port_max
 
 	if (UNLIKELY((it = malloc(sizeof(struct s_addr_iterator))) == NULL))
 	{
-		ft_dprintf(ft_stderr, "%s: out of memory\n", ft_argv[0]);
+		ft_fprintf(ft_fstderr, "%s: out of memory\n", ft_argv[0]);
 		return NULL;
 	}
 	ft_bzero(it, sizeof(struct s_addr_iterator));
@@ -151,7 +151,7 @@ AddressIterator address_iterator_init(U16 default_port_min, U16 default_port_max
 		UNLIKELY(pthread_mutex_init(&it->progress_lock, &attr) != 0) ||
 		UNLIKELY(pthread_cond_init(&it->progress_cond, NULL) != 0))
 	{
-		ft_dprintf(ft_stderr, "%s: pthread init failed\n", ft_argv[0]);
+		ft_fprintf(ft_fstderr, "%s: pthread init failed\n", ft_argv[0]);
 		goto exit_err;
 	}
 	pthread_mutexattr_destroy(&attr);
@@ -164,12 +164,12 @@ AddressIterator address_iterator_init(U16 default_port_min, U16 default_port_max
 
 	if ((ret = regcomp(&it->ip_reg, ip_reg, REG_EXTENDED)) != 0)
 	{
-		ft_dprintf(ft_stderr, "%s: ip regex compilation\n", ft_argv[0]);
+		ft_fprintf(ft_fstderr, "%s: ip regex compilation\n", ft_argv[0]);
 		goto exit_err;
 	}
 	if ((ret = regcomp(&it->range_reg, range_reg, REG_EXTENDED)) != 0)
 	{
-		ft_dprintf(ft_stderr, "%s: range regex compilation\n", ft_argv[0]);
+		ft_fprintf(ft_fstderr, "%s: range regex compilation\n", ft_argv[0]);
 		goto exit_err;
 	}
 
@@ -209,7 +209,7 @@ bool address_iterator_ingest(AddressIterator it, const_string addr_str)
 	byte_str = NULL;
 	if (UNLIKELY((str = ft_strdup(addr_str)) == NULL))
 	{
-		ft_dprintf(ft_stderr, "%s: out of memory\n", ft_argv[0]);
+		ft_fprintf(ft_fstderr, "%s: out of memory\n", ft_argv[0]);
 		return FALSE;
 	}
 
@@ -322,7 +322,7 @@ bool address_iterator_ingest(AddressIterator it, const_string addr_str)
 		Address *new;
 		if (UNLIKELY((new = malloc(sizeof(Address) * it->addrs_alloc * 2)) == NULL))
 		{
-			ft_dprintf(ft_stderr, "%s: out of memory\n", ft_argv[0]);
+			ft_fprintf(ft_fstderr, "%s: out of memory\n", ft_argv[0]);
 			return FALSE;
 		}
 		ft_memcpy(new, it->addrs, sizeof(Address) * it->addrs_n);
@@ -333,7 +333,7 @@ bool address_iterator_ingest(AddressIterator it, const_string addr_str)
 
 	if (UNLIKELY((addr.source_str = ft_strdup(addr_str)) == NULL))
 	{
-		ft_dprintf(ft_stderr, "%s: out of memory\n", ft_argv[0]);
+		ft_fprintf(ft_fstderr, "%s: out of memory\n", ft_argv[0]);
 		return FALSE;
 	}
 
@@ -343,7 +343,7 @@ bool address_iterator_ingest(AddressIterator it, const_string addr_str)
 	return TRUE;
 
 exit_malformed_addr:
-	ft_dprintf(ft_stderr, "%s: %s: malformed address\n", ft_argv[0], addr_str);
+	ft_fprintf(ft_fstderr, "%s: %s: malformed address\n", ft_argv[0], addr_str);
 exit_err:
 	free(byte_str);
 	free(str);
@@ -490,7 +490,7 @@ U32 address_get_src_ip(Address *addr)
 	dstaddr = address_get_dst_ip(addr);
 	if (getifaddrs(&ifaddr) == -1)
 	{
-		ft_dprintf(ft_stderr, "%s: %s\n", ft_argv[0], ft_strerror2(ft_errno));
+		ft_fprintf(ft_fstderr, "%s: %s\n", ft_argv[0], ft_strerror2(ft_errno));
 		ft_errno = FT_ESYSCALL;
 		return 0;
 	}
@@ -516,7 +516,7 @@ U32 address_get_src_ip(Address *addr)
 	}
 	freeifaddrs(ifaddr);
 
-	ft_dprintf(ft_stderr, "%s: no suitable interface found\n", ft_argv[0]);
+	ft_fprintf(ft_fstderr, "%s: no suitable interface found\n", ft_argv[0]);
 	ft_errno = FT_EINVOP;
 	return 0;
 }

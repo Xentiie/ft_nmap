@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/03/16 16:43:53 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/14 22:58:45 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/22 04:44:00 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -62,7 +62,12 @@ U64 ft_vprintf(const_string fmt, va_list args)
 
 U64 ft_vfprintf(t_file *file, const_string fmt, va_list args)
 {
-	return printf_internal(fmt, args, write_interface_file, file);
+	U64 ret;
+
+	ft_ffilelock(file);
+	ret = printf_internal(fmt, args, write_interface_file, file);
+	ft_ffileunlock(file);
+	return ret;
 }
 
 U64 ft_vdprintf(filedesc fd, const_string fmt, va_list args)

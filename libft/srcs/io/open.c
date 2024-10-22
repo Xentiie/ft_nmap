@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/01/17 13:47:45 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/12 12:51:39 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/22 04:41:57 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -133,7 +133,6 @@ t_file *ft_fcreate(filedesc fd)
 	const U16 default_buf_size = 8192;
 	t_file *file;
 	string buff;
-	pthread_mutex_t mut;
 
 	file = NULL;
 	buff = NULL;
@@ -142,20 +141,15 @@ t_file *ft_fcreate(filedesc fd)
 		goto exit_err;
 	if (UNLIKELY((buff = malloc(sizeof(char) * default_buf_size)) == NULL))
 		goto exit_err;
-	if (UNLIKELY(pthread_mutex_init(&mut, NULL) != 0))
-		goto exit_err;
 
 	file->fd = fd;
 	file->buff_size = default_buf_size;
 	file->buff = buff;
 	file->buff_cnt = 0;
 	file->buffered = FALSE;
-	file->locked = TRUE;
-	file->mut = mut;
 	__FTRETURN_OK(file);
 
 exit_err:
-	ft_close(fd);
 	free(buff);
 	free(file);
 	__FTRETURN_ERR(NULL, FT_EOMEM);

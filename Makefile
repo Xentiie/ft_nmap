@@ -6,7 +6,7 @@
 #    By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/04/15 17:26:47 by reclaire          #+#    #+#              #
-#    Updated: 2024/10/18 18:26:06 by reclaire         ###   ########.fr        #
+#    Updated: 2024/10/21 23:37:25 by reclaire         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -26,5 +26,4 @@ _libft:
 			$(MAKE) -C ./libft
 
 install: $(NAME)
-			chown root:root ./$(NAME)
-			chmod u+s ./$(NAME)
+			setcap cap_net_raw+ep $(NAME)

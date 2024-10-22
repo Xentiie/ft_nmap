@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/01/24 13:40:56 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/13 13:48:10 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/22 04:47:41 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,7 +44,9 @@ S64 ft_fwrite(t_file *file, char *buffer, U64 size)
 {
 	S64 ret;
 
-	ft_ffilelock(file);
+	if (UNLIKELY(!ft_ffilelock(file)))
+		return -1;
+
 	if (!file->buffered)
 		ret = ft_write(file->fd, buffer, size);
 	else

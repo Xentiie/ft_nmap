@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 17:20:56 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/15 16:17:26 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/22 04:49:37 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,7 +57,7 @@ string full_addr_to_str(U32 addr)
 	dummy_addr.sin_addr.s_addr = addr;
 	if ((i = getnameinfo((struct sockaddr *)&dummy_addr, sizeof(struct sockaddr_in), addr_str, sizeof(addr_str), NULL, 0, NI_NAMEREQD)) != 0)
 	{
-		ft_dprintf(ft_stderr, "%s: %s\n", ft_argv[0], gai_strerror(i));
+		ft_fprintf(ft_fstderr, "%s: %s\n", ft_argv[0], gai_strerror(i));
 		return NULL;
 	}
 
@@ -75,7 +75,7 @@ string full_addr_to_str(U32 addr)
 	out = ft_strdup(addr_str);
 	if (UNLIKELY(out == NULL))
 	{
-		ft_dprintf(ft_stderr, "%s: out of memory\n", ft_argv[0]);
+		ft_fprintf(ft_fstderr, "%s: out of memory\n", ft_argv[0]);
 		return NULL;
 	}
 	return out;
