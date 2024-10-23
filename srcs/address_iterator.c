@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 01:04:08 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/22 04:49:37 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/23 17:55:32 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 #include <unistd.h>
 
 #include "address_iterator.h"
+#include "ft_nmap.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -61,7 +62,10 @@ typedef struct s_addr_iterator
 	pthread_mutex_t progress_lock;
 	pthread_cond_t progress_cond;
 
-	enum e_scan_result *results;
+	pthread_mutex_t results_lock;
+	ScanAddress *results;
+	U32 results_n;
+	U32 results_alloc;
 } *AddressIterator;
 
 #define range_val(range) (range).x
@@ -148,6 +152,7 @@ AddressIterator address_iterator_init(U16 default_port_min, U16 default_port_max
 	pthread_mutexattr_init(&attr);
 	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK_NP);
 	if (UNLIKELY(pthread_mutex_init(&it->global_lock, &attr) != 0) ||
+		UNLIKELY(pthread_mutex_init(&it->results_lock, &attr) != 0) ||
 		UNLIKELY(pthread_mutex_init(&it->progress_lock, &attr) != 0) ||
 		UNLIKELY(pthread_cond_init(&it->progress_cond, NULL) != 0))
 	{
@@ -172,6 +177,10 @@ AddressIterator address_iterator_init(U16 default_port_min, U16 default_port_max
 		ft_fprintf(ft_fstderr, "%s: range regex compilation\n", ft_argv[0]);
 		goto exit_err;
 	}
+
+	it->results_n = 0;
+	it->results_alloc = 10;
+	it->results = malloc(sizeof(ScanAddress) * it->results_alloc);
 
 	it->default_port_min = default_port_min;
 	it->default_port_max = default_port_max;
@@ -350,12 +359,29 @@ exit_err:
 	return FALSE;
 }
 
+static U64 get_results_cnt(Address *addr)
+{
+	U64 out;
+
+	out = 1;
+	for (U8 i = 0; i < 4; i++)
+	{
+		if (range_min(addr->ip[i]) != range_max(addr->ip[i]))
+			out *= range_max(addr->ip[i]) - range_min(addr->ip[i]) + 1;
+	}
+	if (range_min(addr->port) != range_max(addr->port))
+		out *= range_max(addr->port) - range_min(addr->port) + 1;
+	return out;
+}
+
 bool address_iterator_prepare(AddressIterator it)
 {
 	Address *addr;
 	U64 j, k;
+	U8 scans_n;
 
-	if (UNLIKELY((it->results = malloc(sizeof(enum e_scan_result) * it->total)) == NULL))
+	scans_n = __builtin_popcount(g_scans);
+	if (UNLIKELY((it->results = malloc(sizeof(enum e_scan_result) * it->total * scans_n)) == NULL))
 		return FALSE;
 
 	j = 0;
@@ -364,16 +390,7 @@ bool address_iterator_prepare(AddressIterator it)
 		addr = &it->addrs[i];
 		addr->results = &it->results[j];
 
-		k = 1;
-		for (U8 i = 0; i < 4; i++)
-		{
-			if (range_min(addr->ip[i]) != range_max(addr->ip[i]))
-				k *= range_max(addr->ip[i]) - range_min(addr->ip[i]) + 1;
-		}
-		if (range_min(addr->port) != range_max(addr->port))
-			k *= range_max(addr->port) - range_min(addr->port) + 1;
-
-		j += k;
+		j += get_results_cnt(addr) * scans_n;
 	}
 	return TRUE;
 }
@@ -446,11 +463,6 @@ bool address_iterator_next(AddressIterator it, ScanAddress *out)
 		return FALSE;
 	}
 	out->port = addr->port.x;
-	out->result = addr->results;
-
-	for (U8 i = 0; i < 4; i++)
-		out->result += (range_val(addr->ip[i]) - range_min(addr->ip[i]));
-	out->result += (range_val(addr->port) - range_min(addr->port));
 
 	it_unlock(it);
 	return TRUE;
@@ -519,4 +531,56 @@ U32 address_get_src_ip(Address *addr)
 	ft_fprintf(ft_fstderr, "%s: no suitable interface found\n", ft_argv[0]);
 	ft_errno = FT_EINVOP;
 	return 0;
+}
+
+void address_iterator_set_result(AddressIterator it, ScanAddress addr)
+{
+	ScanAddress *new;
+
+	pthread_mutex_lock(&it->results_lock);
+
+	if (it->results_n >= it->results_alloc)
+	{
+		new = malloc(sizeof(ScanAddress) * it->results_alloc * 2);
+		ft_memcpy(new, it->results, sizeof(ScanAddress) * it->results_n);
+		free(it->results);
+		it->results = new;
+		it->results_alloc *= 2;
+	}
+	it->results[it->results_n++] = addr;
+
+	pthread_mutex_unlock(&it->results_lock);
+}
+
+static S32 results_sort(void *a, void *b)
+{
+	ScanAddress *addr1 = (ScanAddress *)a;
+	ScanAddress *addr2 = (ScanAddress *)b;
+
+	if ((S64)addr1->dstaddr - (S64)addr2->dstaddr == 0)
+		return (S32)addr1->port - (S32)addr2->port;
+	return (S64)addr1->dstaddr - (S64)addr2->dstaddr;
+}
+
+void address_iterator_results(AddressIterator it)
+{
+	char buf[40];
+
+	ft_sort(it->results, sizeof(*it->results), it->results_n, results_sort);
+
+	for (U64 i = 0; i < it->results_n; i++)
+	{
+		string addrstr = full_addr_to_str(it->results[i].dstaddr);
+		ft_printf("%s port:%u ", addrstr, it->results[i].port);
+		free(addrstr);
+
+		for (U8 s = 0; s < 6; s++)
+		{
+			if (!(g_scans & (1 << s)))
+				continue;
+			scan_to_str(1 << s, buf, sizeof(buf));
+			ft_printf("%s:%s ", buf, it->results[i].results[s] ? "open" : "closed");
+		}
+		ft_printf("\n");
+	}
 }

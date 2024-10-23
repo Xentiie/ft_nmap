@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/14 11:07:17 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/21 14:06:23 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/23 17:34:45 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,7 +52,7 @@ typedef struct s_scan_addr
 	U32 srcaddr;
 	U32 dstaddr;
 	U16 port;
-	enum e_scan_result *result;
+	enum e_scan_result results[6];
 } ScanAddress;
 
 /*
@@ -77,6 +77,8 @@ Returns NULL when no more address
 No failure
 */
 bool address_iterator_next(AddressIterator it, ScanAddress *out);
+void address_iterator_set_result(AddressIterator it, ScanAddress addr);
+void address_iterator_results(AddressIterator it);
 
 /* No failure */
 U64 address_iterator_progress(AddressIterator it);

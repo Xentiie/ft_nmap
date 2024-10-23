@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/13 16:11:11 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/22 05:27:26 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/23 17:56:58 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <signal.h>
+#include <pthread.h>
 
 #include <ifaddrs.h>
 #include <arpa/inet.h>
@@ -83,11 +84,16 @@ struct pseudo_header
 
 static const_string get_service_name(U16 port, const_string protocol)
 {
+	static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 	struct servent *service;
+	string out;
 
+	pthread_mutex_lock(&lock);
 	if ((service = getservbyport(htons(port), protocol)) != NULL)
-		return service->s_name;
-	return "Unknown service";
+		out = service->s_name;
+	out = "Unknown service";
+	pthread_mutex_unlock(&lock);
+	return out;
 }
 
 /*
@@ -136,7 +142,7 @@ void *run_test(AddressIterator it)
 {
 	const S32 on = 1;
 	U8 pseudo_packet[sizeof(struct pseudo_header) + sizeof(struct s_tcp_hdr)];
-	U8 buffer[sizeof(struct iphdr) + sizeof(struct s_tcp_hdr) + 4];
+	U8 buffer[sizeof(struct iphdr) + sizeof(struct s_tcp_hdr)];
 	ScanAddress addr;				  /* addresse cible */
 	filedesc sock;					  /* socket pour TCP:envoie/recepetion UDP:envoie */
 	filedesc icmp_sock;				  /* socket pour ICMP:reception (UDP) */
@@ -268,20 +274,11 @@ void *run_test(AddressIterator it)
 					result = R_CLOSED;
 					break;
 				}
-
-				if (result == R_OPEN)
-				{
-					// TODO: output
-					scan_to_str(scan & (1 << s), buff1, sizeof(buff1));
-					ft_printf("Scan %s (%#x) to %s:%u = %d (%s)\n",
-							  buff1, scan & (1 << s),
-							  addr.addr->source_str, addr.port,
-							  result, get_service_name(addr.port, NULL));
-				}
-				*addr.result = result;
-				// printf("set %p:%d\n", addr.result, result);
+				addr.results[s] = result;
 			}
 		}
+		address_iterator_set_result(it, addr);
+		//addr.results[5] = UDP result
 		ft_close(sock);
 		continue;
 
@@ -319,7 +316,7 @@ void *run_test(AddressIterator it)
 			//	// TODO:
 			//	perror("Erreur d'envoi du paquet");
 			//	return NULL;
-			//}
+			// }
 
 			ft_printf("Paquet UDP envoyé avec succès.\n");
 
@@ -377,7 +374,117 @@ void *run_test(AddressIterator it)
 	return NULL;
 }
 
-// #if 0
+void *run_test_udp(AddressIterator it)
+{
+	struct sockaddr_in dest;
+	char buffer[4096];
+	struct sockaddr_in source;
+	socklen_t source_len = sizeof(source);
+	ScanAddress addr;
+	filedesc sock_udp;
+	filedesc sock_raw;
+
+	while (address_iterator_next(it, &addr))
+	{
+		// Initialisation de la destination
+		dest.sin_family = AF_INET;
+		dest.sin_port = htons(addr.port);
+		dest.sin_addr.s_addr = addr.dstaddr;
+
+		// Préparation du paquet UDP
+		//struct udphdr udph;
+		//udph.source = htons(12345);				 // Port source
+		//udph.dest = htons(addr.port);			 // Port destination
+		//udph.len = htons(sizeof(struct udphdr)); // Longueur de l'en-tête UDP
+		//udph.check = 0;							 // Somme de contrôle, peut être ignorée pour UDP
+
+		if ((sock_udp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == (filedesc)-1)
+		{
+			ft_fprintf(ft_fstderr, "%s: couldn't open socket: %s\n", ft_argv[0], ft_strerror2(ft_errno));
+			return NULL;
+		}
+
+		if ((sock_raw = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) == (filedesc)-1)
+		{
+			ft_fprintf(ft_fstderr, "%s: couldn't open socket: %s\n", ft_argv[0], ft_strerror2(ft_errno));
+			return NULL;
+		}
+
+		if (setsockopt(sock_udp, SOL_SOCKET, SO_RCVTIMEO, &g_timeout, sizeof(g_timeout)) < 0)
+		{
+			ft_fprintf(ft_fstderr, "%s: setsockopt: %s\n", ft_argv[0], ft_strerror2(ft_errno));
+			return NULL;
+		}
+		if (setsockopt(sock_raw, SOL_SOCKET, SO_RCVTIMEO, &g_timeout, sizeof(g_timeout)) < 0)
+		{
+			ft_fprintf(ft_fstderr, "%s: setsockopt: %s\n", ft_argv[0], ft_strerror2(ft_errno));
+			return NULL;
+		}
+
+		// Envoyer le paquet UDP
+		if (sendto(sock_udp, buffer, 1, 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
+		{
+			// TODO:
+			perror("Erreur d'envoi du paquet");
+			return NULL;
+		}
+
+		ft_printf("Paquet UDP envoyé au port %d.\n", addr.port);
+
+		// Lire la réponse ICMP ou UDP avec le socket brut (icmp_sock)
+		while (1)
+		{
+			printf("recv\n");
+			int bytes = recvfrom(sock_raw, buffer, sizeof(buffer), 0, (struct sockaddr *)&source, &source_len);
+			if (bytes < 0)
+			{
+				if (errno == EAGAIN || errno == EWOULDBLOCK)
+				{
+					ft_printf("Aucune réponse reçue, le port est probablement ouvert ou filtré.\n");
+					break;
+				}
+				else
+				{
+					perror("Erreur de réception");
+					break;
+				}
+			}
+
+			struct iphdr *iph_response = (struct iphdr *)buffer;
+			if (iph_response->protocol == IPPROTO_ICMP)
+			{
+				struct icmphdr *icmp_response = (struct icmphdr *)(buffer + (iph_response->ihl * 4));
+
+				// Vérifier si c'est un message ICMP Port Unreachable
+				if (icmp_response->type == ICMP_DEST_UNREACH && icmp_response->code == ICMP_PORT_UNREACH)
+				{
+					// Extraire le paquet original encapsulé dans la réponse ICMP
+					struct iphdr *original_ip = (struct iphdr *)(buffer + (iph_response->ihl * 4) + sizeof(struct icmphdr));
+					struct udphdr *original_udp = (struct udphdr *)((unsigned char *)original_ip + (original_ip->ihl * 4));
+
+					// Comparer l'IP de destination et le port UDP original
+					if (original_ip->daddr == addr.dstaddr && ntohs(original_udp->dest) == addr.port)
+					{
+						ft_printf("Le port %d est fermé (ICMP Port Unreachable reçu).\n", addr.port);
+						break;
+					}
+				}
+			}
+			else if (iph_response->protocol == IPPROTO_UDP)
+			{
+				ft_printf("Réponse UDP reçue, le port %d est ouvert.\n", addr.port);
+				break;
+			}
+		}
+	}
+
+	// Fermer le socket brut
+	close(sock_raw);
+
+	return NULL;
+}
+
+#if 0
 void *run_test_udp(AddressIterator it)
 {
 	struct sockaddr_in dest;
@@ -519,4 +626,4 @@ void *run_test_udp(AddressIterator it)
 
 	return NULL;
 }
-// #endif
+#endif

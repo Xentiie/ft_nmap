@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/22 05:01:13 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/23 17:45:46 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -374,7 +374,7 @@ int main()
 			pthread_join(threads[i], NULL);
 		free(threads);
 	}
-	// pthread_join(output_thread, NULL);
+	address_iterator_results(it);
 	address_iterator_destroy(it);
 	return 0;
 exit_err:

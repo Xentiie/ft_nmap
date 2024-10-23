@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 16:31:46 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/22 05:00:47 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/22 16:26:09 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,12 +48,6 @@ Returns NULL on failure
 Takes care of error messages
 */
 string full_addr_to_str(U32 addr);
-
-/*
-Returns 0 with `ft_errno != 0` on failure
-Takes care of error messages
-*/
-U32 dns_resolve(const_string addr);
 
 void scan_to_str(U8 type, char buffer[], U64 size);
 /* return 0 on failure */
