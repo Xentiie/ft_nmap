@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/23 17:45:46 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/30 01:40:37 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,6 +59,24 @@ static void print_help();
 
 int main()
 {
+#if 0
+	S32 result = 0;
+
+	result |= mk_result(S_SYN, R_OPEN);
+	printf("%#x\n", result);
+	result |= mk_result(S_NULL, R_UNFILTERED);
+	printf("%#x\n", result);
+	result |= mk_result(S_ACK, R_FILTERED);
+	printf("%#x\n", result);
+
+	printf("\n");
+	printf("%#x\n", result);
+	printf("%#x\n", (result >> (__builtin_ctz(S_NULL) * 2)) & 0x3);
+	0x81;
+
+	return;
+#endif
+
 	U8 thread_count;		   /* number of threads */
 	U16 ports_min, ports_max;  /* default port min/max */
 	const_string dstaddr_file; /* file containing target addresses. NULL if no file has been specified */

@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 01:04:08 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/23 17:55:32 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/30 01:46:38 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 #include "libft/lists.h"
 #include "libft/limits.h"
 #include "libft/io.h"
+#include "libft/ansi.h"
 
 #include <unistd.h>
 
@@ -378,10 +379,8 @@ bool address_iterator_prepare(AddressIterator it)
 {
 	Address *addr;
 	U64 j, k;
-	U8 scans_n;
 
-	scans_n = __builtin_popcount(g_scans);
-	if (UNLIKELY((it->results = malloc(sizeof(enum e_scan_result) * it->total * scans_n)) == NULL))
+	if (UNLIKELY((it->results = malloc(sizeof(U32) * it->total)) == NULL))
 		return FALSE;
 
 	j = 0;
@@ -390,7 +389,7 @@ bool address_iterator_prepare(AddressIterator it)
 		addr = &it->addrs[i];
 		addr->results = &it->results[j];
 
-		j += get_results_cnt(addr) * scans_n;
+		j += get_results_cnt(addr);
 	}
 	return TRUE;
 }
@@ -565,21 +564,61 @@ static S32 results_sort(void *a, void *b)
 void address_iterator_results(AddressIterator it)
 {
 	char buf[40];
+	U32 curr_addr;
+	U32 curr_results;
+	U16 port_st;
+	U32 streak_n;
 
 	ft_sort(it->results, sizeof(*it->results), it->results_n, results_sort);
 
 	for (U64 i = 0; i < it->results_n; i++)
 	{
-		string addrstr = full_addr_to_str(it->results[i].dstaddr);
-		ft_printf("%s port:%u ", addrstr, it->results[i].port);
-		free(addrstr);
+		while (i < it->results_n && (it->results[i].results & 0b010101010101) == 0)
+			i++;
+		if (i >= it->results_n)
+			break;
 
-		for (U8 s = 0; s < 6; s++)
+		curr_addr = it->results[i].dstaddr;
+		curr_results = it->results[i].results;
+		port_st = it->results[i].port;
+		streak_n = 0;
+		while (i < it->results_n && it->results[i].dstaddr == curr_addr && it->results[i].results == curr_results)
 		{
-			if (!(g_scans & (1 << s)))
+			streak_n++;
+			i++;
+		}
+		i--;
+		if (streak_n > 1)
+			ft_printf("%s:[%u-%u] : ", addr_to_str(curr_addr), port_st, it->results[i].port);
+		else
+			ft_printf("%s:%u : ", addr_to_str(curr_addr), it->results[i].port);
+
+		for (U8 s = 1; s < ((g_scans << 1) & (~g_scans)); s <<= 1)
+		{
+			if (!(s & g_scans))
 				continue;
-			scan_to_str(1 << s, buf, sizeof(buf));
-			ft_printf("%s:%s ", buf, it->results[i].results[s] ? "open" : "closed");
+
+			string res_str;
+			U32 r = get_result(s, it->results[i].results);
+
+			switch (r)
+			{
+			case R_CLOSED:
+				res_str = FT_RED"CLOSED"FT_CRESET;
+				break;
+			case R_OPEN:
+				res_str = FT_GREEN"OPEN"FT_CRESET;
+				break;
+			case R_FILTERED:
+				res_str = FT_RED"FILTERED"FT_CRESET;
+				break;
+			case R_UNFILTERED:
+				res_str = FT_GREEN"UNFILTERED"FT_CRESET;
+				break;
+			}
+
+			scan_to_str(s, buf, sizeof(buf));
+			ft_printf("%s:%s ", buf, res_str);
 		}
 		ft_printf("\n");
 	}

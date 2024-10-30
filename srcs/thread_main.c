@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/13 16:11:11 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/23 17:56:58 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/30 01:42:41 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -153,7 +153,7 @@ void *run_test(AddressIterator it)
 	struct udphdr *udph;			  /* header UDP */
 	struct s_tcp_hdr tcph;			  /* header TCP */
 	U8 scan;						  /* type de scan actuel */
-	enum e_scan_result result;		  /* resultat du scan */
+	U32 result;						  /* resultat du scan */
 	bool received;					  /* packet recu ou pas */
 
 	S64 ret;
@@ -191,6 +191,7 @@ void *run_test(AddressIterator it)
 			return NULL;
 		}
 
+		addr.results = 0;
 		for (U8 s = 0; s < 5; s++)
 		{
 			if (!(g_scans & (1 << s)))
@@ -274,11 +275,11 @@ void *run_test(AddressIterator it)
 					result = R_CLOSED;
 					break;
 				}
-				addr.results[s] = result;
+				addr.results |= mk_result(s, result);
 			}
 		}
 		address_iterator_set_result(it, addr);
-		//addr.results[5] = UDP result
+		// addr.results[5] = UDP result
 		ft_close(sock);
 		continue;
 
@@ -392,11 +393,11 @@ void *run_test_udp(AddressIterator it)
 		dest.sin_addr.s_addr = addr.dstaddr;
 
 		// Préparation du paquet UDP
-		//struct udphdr udph;
-		//udph.source = htons(12345);				 // Port source
-		//udph.dest = htons(addr.port);			 // Port destination
-		//udph.len = htons(sizeof(struct udphdr)); // Longueur de l'en-tête UDP
-		//udph.check = 0;							 // Somme de contrôle, peut être ignorée pour UDP
+		// struct udphdr udph;
+		// udph.source = htons(12345);				 // Port source
+		// udph.dest = htons(addr.port);			 // Port destination
+		// udph.len = htons(sizeof(struct udphdr)); // Longueur de l'en-tête UDP
+		// udph.check = 0;							 // Somme de contrôle, peut être ignorée pour UDP
 
 		if ((sock_udp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == (filedesc)-1)
 		{

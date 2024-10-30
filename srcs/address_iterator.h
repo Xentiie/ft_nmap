@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/14 11:07:17 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/23 17:34:45 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/10/30 01:38:36 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,27 +23,22 @@
 #define S_UDP 0x20
 #define S_ALL 0x3F
 
-enum e_scan_result
-{
-	R_CLOSED,
-	R_OPEN,
-	R_FILTERED,
-	R_UNFILTERED,
-};
+#define R_CLOSED 0x0
+#define R_OPEN 0x1
+#define R_FILTERED 0x2
+#define R_UNFILTERED 0x3
+#define mk_result(scan_type, result) ((result & 0x3) << (__builtin_ctz(scan_type) * 2))
+#define get_result(scan_type, results) ((results >> (__builtin_ctz(scan_type) * 2)) & 0x3)
 
 typedef struct s_addr_iterator *AddressIterator;
+typedef struct s_scan_addr ScanAddress;
 
-/*
-Represente une plage d'addresses/ports.
-`results` est un array de resultats, de taille
-# Math: 1 + (port_{\text{max}} - port_{\text{min}}) \cdot \sum_{i=0}^{3} (ip_{\text{max}_i} - ip_{\text{min}_i})
-*/
 typedef struct s_address
 {
 	string source_str;
 	t_iv3 port;
 	t_iv3 ip[4];
-	enum e_scan_result *results;
+	ScanAddress *results;
 } Address;
 
 typedef struct s_scan_addr
@@ -52,7 +47,7 @@ typedef struct s_scan_addr
 	U32 srcaddr;
 	U32 dstaddr;
 	U16 port;
-	enum e_scan_result results[6];
+	U32 results;
 } ScanAddress;
 
 /*
