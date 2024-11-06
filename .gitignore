@@ -20,5 +20,3 @@ tests/perf_logs/
 
 *.mk
 apt.sh
-
-ft_nmap
