@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/30 01:40:37 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/05 17:09:26 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,7 +39,9 @@ bool g_has_capnetraw;
 U8 g_scans;
 bool g_use_custom_interface;
 U32 g_srcaddr;
+U8 g_ttl;
 t_time g_timeout;
+bool g_colored_output;
 
 void *run_test_udp(AddressIterator it);
 
@@ -51,7 +53,9 @@ static const t_long_opt long_opts[] = {
 	{"ports", TRUE, NULL, 'p'},
 	{"speedup", TRUE, NULL, 's'},
 	{"scan", TRUE, NULL, 'S'},
-	{"timeout", TRUE, NULL, 't'},
+	{"timeout", TRUE, NULL, 'w'},
+	{"ttl", TRUE, NULL, 't'},
+	{"no-colors", FALSE, NULL, 1000},
 	{0},
 };
 
@@ -59,24 +63,6 @@ static void print_help();
 
 int main()
 {
-#if 0
-	S32 result = 0;
-
-	result |= mk_result(S_SYN, R_OPEN);
-	printf("%#x\n", result);
-	result |= mk_result(S_NULL, R_UNFILTERED);
-	printf("%#x\n", result);
-	result |= mk_result(S_ACK, R_FILTERED);
-	printf("%#x\n", result);
-
-	printf("\n");
-	printf("%#x\n", result);
-	printf("%#x\n", (result >> (__builtin_ctz(S_NULL) * 2)) & 0x3);
-	0x81;
-
-	return;
-#endif
-
 	U8 thread_count;		   /* number of threads */
 	U16 ports_min, ports_max;  /* default port min/max */
 	const_string dstaddr_file; /* file containing target addresses. NULL if no file has been specified */
@@ -118,8 +104,8 @@ int main()
 	}
 
 	{
-		const string range_reg_src = "^\\[([0-9]+)-([0-9]+)\\]$"; /* range regex pattern to parse '[x-y]' */
-		regex_t range_reg;										  /* range regex */
+		const string range_reg_src = "^([0-9]+)-([0-9]+)$"; /* range regex pattern to parse '[x-y]' */
+		regex_t range_reg;									/* range regex */
 		regmatch_t range_matches[3];
 		S32 opt;
 
@@ -129,8 +115,10 @@ int main()
 		ports_min = 1;
 		ports_max = 1024;
 		thread_count = 0;
+		g_ttl = 64;
 		g_scans = S_ALL;
 		g_use_custom_interface = FALSE;
+		g_colored_output = TRUE;
 
 		if (UNLIKELY(regcomp(&range_reg, range_reg_src, REG_EXTENDED) != 0))
 		{
@@ -138,10 +126,14 @@ int main()
 			return 1;
 		}
 
-		while ((opt = ft_getopt_long(ft_argc, ft_argv, "f:hi:I:p:s:S:t:", long_opts, NULL)) != -1)
+		while ((opt = ft_getopt_long(ft_argc, ft_argv, "f:hi:I:p:s:S:t:w:", long_opts, NULL)) != -1)
 		{
 			switch (opt)
 			{
+			case 1000:
+				g_colored_output = FALSE;
+				break;
+
 			case 'f':
 				dstaddr_file = ft_optarg;
 				break;
@@ -189,8 +181,20 @@ int main()
 			case 'p':
 				if (regexec(&range_reg, ft_optarg, array_len(range_matches), range_matches, 0) == REG_NOMATCH)
 				{
-					ft_fprintf(ft_fstderr, "%s: invalid port range: '%s'\n", ft_argv[0], ft_optarg);
-					goto optarg_err;
+					if (!ft_str_isnbr(ft_optarg))
+					{
+						ft_fprintf(ft_fstderr, "%s: invalid port range: '%s'\n", ft_argv[0], ft_optarg);
+						goto optarg_err;
+					}
+					i = ft_atoi(ft_optarg);
+					if (i < 1 || i > U16_MAX)
+					{
+						ft_fprintf(ft_fstderr, "%s: invalid argument: '%s': out of range: 1 <= value <= 65535\n", ft_argv[0], ft_optarg);
+						goto optarg_err;
+					}
+					ports_min = i;
+					ports_max = i;
+					break;
 				}
 
 				string str = ft_strdup(ft_optarg);
@@ -226,7 +230,7 @@ int main()
 					goto optarg_err;
 				}
 				i = ft_atoi(ft_optarg);
-				if (i < 1 || i > U16_MAX)
+				if (i < 1 || i > 250)
 				{
 					ft_dprintf(ft_errno, "%s: invalid argument: '%s': out of range: 1 <= value <= 250\n", ft_argv[0], ft_optarg);
 					goto optarg_err;
@@ -244,6 +248,21 @@ int main()
 				break;
 
 			case 't':
+				if (!ft_str_isnbr(ft_optarg))
+				{
+					ft_dprintf(ft_errno, "%s: invalid argument: '%s'\n", ft_argv[0], ft_optarg);
+					goto optarg_err;
+				}
+				i = ft_atoi(ft_optarg);
+				if (i < 1 || i > U8_MAX)
+				{
+					ft_dprintf(ft_errno, "%s: invalid argument: '%s': out of range: 1 <= value <= 255\n", ft_argv[0], ft_optarg);
+					goto optarg_err;
+				}
+				g_ttl = i;
+				break;
+
+			case 'w':
 				if (!ft_str_isflt(ft_optarg))
 				{
 					ft_dprintf(ft_errno, "%s: invalid argument: '%s'\n", ft_argv[0], ft_optarg);
@@ -351,19 +370,8 @@ int main()
 	g_timeout.seconds = timeout_flt;
 	g_timeout.nanoseconds = (timeout_flt - g_timeout.seconds) * 1e6; // microseconds, pas nano
 
-	if (!address_iterator_prepare(it))
-	{
-		// TODO:
-		return 1;
-	}
-
 	if (thread_count == 0)
-	{
-		if (g_scans & S_UDP)
-			run_test_udp(it);
-		else
-			run_test(it);
-	}
+		run_test(it);
 	else
 	{
 		if (UNLIKELY((threads = malloc(sizeof(pthread_t) * thread_count)) == NULL))
@@ -392,6 +400,7 @@ int main()
 			pthread_join(threads[i], NULL);
 		free(threads);
 	}
+
 	address_iterator_results(it);
 	address_iterator_destroy(it);
 	return 0;

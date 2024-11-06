@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 01:04:08 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/30 01:46:38 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/05 17:47:26 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,19 +59,13 @@ typedef struct s_addr_iterator
 	U64 progress;
 	U64 total;
 
+	U32 results_addr_max_len;
+
 	pthread_mutex_t global_lock;
 	pthread_mutex_t progress_lock;
 	pthread_cond_t progress_cond;
 
-	pthread_mutex_t results_lock;
-	ScanAddress *results;
-	U32 results_n;
-	U32 results_alloc;
 } *AddressIterator;
-
-#define range_val(range) (range).x
-#define range_min(range) (range).y
-#define range_max(range) (range).z
 
 static U32 dns_resolve(const_string addr)
 {
@@ -112,15 +106,20 @@ static U64 addr_iterations_total(Address *addr)
 {
 	U64 total;
 
-	total = 1;
+	total = range_max(addr->port) - range_min(addr->port) + 1;
 	for (U8 i = 0; i < 4; i++)
-	{
-		if (range_min(addr->ip[i]) != range_max(addr->ip[i]))
-			total *= range_max(addr->ip[i]) - range_min(addr->ip[i]) + 1;
-	}
-	if (range_min(addr->port) != range_max(addr->port))
-		total *= range_max(addr->port) - range_min(addr->port) + 1;
+		total *= range_max(addr->ip[i]) - range_min(addr->ip[i]) + 1;
 	return total;
+}
+
+static U64 addr_iterations_count(Address *addr)
+{
+	U64 total;
+
+	total = range_val(addr->port) - range_min(addr->port) + 1;
+	for (U8 i = 0; i < 4; i++)
+		total *= range_val(addr->ip[i]) - range_min(addr->ip[i]) + 1;
+	return total - 1;
 }
 
 static void it_lock(AddressIterator it)
@@ -135,8 +134,8 @@ static void it_unlock(AddressIterator it)
 
 AddressIterator address_iterator_init(U16 default_port_min, U16 default_port_max)
 {
-	const string ip_reg = "^([0-9]+|\\[[0-9]+-[0-9]+\\])\\.([0-9]+|\\[[0-9]+-[0-9]+\\])\\.([0-9]+|\\[[0-9]+-[0-9]+\\])\\.([0-9]+|\\[[0-9]+-[0-9]+\\])$";
-	const string range_reg = "^\\[([0-9]+)-([0-9]+)\\]$";
+	const string ip_reg = "^([0-9]+|[0-9]+-[0-9]+)\\.([0-9]+|[0-9]+-[0-9]+)\\.([0-9]+|[0-9]+-[0-9]+)\\.([0-9]+|[0-9]+-[0-9]+)$";
+	const string range_reg = "^([0-9]+)-([0-9]+)$";
 	AddressIterator it;
 	S32 ret;
 
@@ -148,12 +147,12 @@ AddressIterator address_iterator_init(U16 default_port_min, U16 default_port_max
 	ft_bzero(it, sizeof(struct s_addr_iterator));
 	it->progress = 0;
 	it->total = 0;
+	it->results_addr_max_len = 0;
 
 	pthread_mutexattr_t attr;
 	pthread_mutexattr_init(&attr);
 	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK_NP);
 	if (UNLIKELY(pthread_mutex_init(&it->global_lock, &attr) != 0) ||
-		UNLIKELY(pthread_mutex_init(&it->results_lock, &attr) != 0) ||
 		UNLIKELY(pthread_mutex_init(&it->progress_lock, &attr) != 0) ||
 		UNLIKELY(pthread_cond_init(&it->progress_cond, NULL) != 0))
 	{
@@ -179,10 +178,6 @@ AddressIterator address_iterator_init(U16 default_port_min, U16 default_port_max
 		goto exit_err;
 	}
 
-	it->results_n = 0;
-	it->results_alloc = 10;
-	it->results = malloc(sizeof(ScanAddress) * it->results_alloc);
-
 	it->default_port_min = default_port_min;
 	it->default_port_max = default_port_max;
 
@@ -201,7 +196,10 @@ exit_err:
 void address_iterator_destroy(AddressIterator it)
 {
 	for (U32 i = 0; i < it->addrs_n; i++)
+	{
+		free(it->addrs[i].results);
 		free(it->addrs[i].source_str);
+	}
 	regfree(&it->ip_reg);
 	regfree(&it->range_reg);
 	free(it->addrs);
@@ -215,6 +213,8 @@ bool address_iterator_ingest(AddressIterator it, const_string addr_str)
 	Address addr;
 	string str;
 	string byte_str;
+	U64 source_addr_str_len;
+	U32 addr_iter_total;
 
 	byte_str = NULL;
 	if (UNLIKELY((str = ft_strdup(addr_str)) == NULL))
@@ -223,6 +223,7 @@ bool address_iterator_ingest(AddressIterator it, const_string addr_str)
 		return FALSE;
 	}
 
+	addr_iter_total = 1;
 	{ /* PORT */
 		string port_str;
 
@@ -269,6 +270,7 @@ bool address_iterator_ingest(AddressIterator it, const_string addr_str)
 			range_max(addr.port) = it->default_port_max;
 		}
 	}
+	addr_iter_total *= range_max(addr.port) - range_min(addr.port) + 1;
 
 	{ /* IP */
 		/* check si l'entrée est un hostname, ou une addresse ip */
@@ -318,6 +320,7 @@ bool address_iterator_ingest(AddressIterator it, const_string addr_str)
 					range_val(addr.ip[i - 1]) = range.x;
 					range_min(addr.ip[i - 1]) = range.x;
 					range_max(addr.ip[i - 1]) = range.y;
+					addr_iter_total *= range.y - range.x + 1;
 				}
 				free(byte_str);
 				byte_str = NULL;
@@ -329,25 +332,34 @@ bool address_iterator_ingest(AddressIterator it, const_string addr_str)
 
 	if (it->addrs_n >= it->addrs_alloc)
 	{
-		Address *new;
-		if (UNLIKELY((new = malloc(sizeof(Address) * it->addrs_alloc * 2)) == NULL))
+		Address *new_addrs;
+		if (UNLIKELY((new_addrs = malloc(sizeof(Address) * it->addrs_alloc * 2)) == NULL))
 		{
 			ft_fprintf(ft_fstderr, "%s: out of memory\n", ft_argv[0]);
 			return FALSE;
 		}
-		ft_memcpy(new, it->addrs, sizeof(Address) * it->addrs_n);
+		ft_memcpy(new_addrs, it->addrs, sizeof(Address) * it->addrs_n);
 		free(it->addrs);
-		it->addrs = new;
+		it->addrs = new_addrs;
 		it->addrs_alloc *= 2;
 	}
 
-	if (UNLIKELY((addr.source_str = ft_strdup(addr_str)) == NULL))
+	if (UNLIKELY((addr.results = malloc(sizeof(U32) * addr_iter_total)) == NULL))
 	{
 		ft_fprintf(ft_fstderr, "%s: out of memory\n", ft_argv[0]);
 		return FALSE;
 	}
+	ft_bzero(addr.results, sizeof(U32) * addr_iter_total);
 
-	it->total += addr_iterations_total(&addr);
+	if (UNLIKELY((addr.source_str = ft_strdup_l(addr_str, &source_addr_str_len)) == NULL))
+	{
+		free(addr.results);
+		ft_fprintf(ft_fstderr, "%s: out of memory\n", ft_argv[0]);
+		return FALSE;
+	}
+	it->results_addr_max_len = ft_imin(source_addr_str_len, it->results_addr_max_len);
+
+	it->total += addr_iter_total;
 	it->addrs[it->addrs_n] = addr;
 	it->addrs_n++;
 	return TRUE;
@@ -360,52 +372,25 @@ exit_err:
 	return FALSE;
 }
 
-static U64 get_results_cnt(Address *addr)
+void address_reset(Address *addr)
 {
-	U64 out;
-
-	out = 1;
-	for (U8 i = 0; i < 4; i++)
-	{
-		if (range_min(addr->ip[i]) != range_max(addr->ip[i]))
-			out *= range_max(addr->ip[i]) - range_min(addr->ip[i]) + 1;
-	}
-	if (range_min(addr->port) != range_max(addr->port))
-		out *= range_max(addr->port) - range_min(addr->port) + 1;
-	return out;
+	range_val(addr->ip[0]) = range_min(addr->ip[0]);
+	range_val(addr->ip[1]) = range_min(addr->ip[1]);
+	range_val(addr->ip[2]) = range_min(addr->ip[2]);
+	range_val(addr->ip[3]) = range_min(addr->ip[3]);
+	range_val(addr->port) = range_min(addr->port) - 1;
 }
 
-bool address_iterator_prepare(AddressIterator it)
+bool address_next(Address *addr)
 {
-	Address *addr;
-	U64 j, k;
-
-	if (UNLIKELY((it->results = malloc(sizeof(U32) * it->total)) == NULL))
+	if (
+		range_val(addr->ip[0]) == range_max(addr->ip[0]) &&
+		range_val(addr->ip[1]) == range_max(addr->ip[1]) &&
+		range_val(addr->ip[2]) == range_max(addr->ip[2]) &&
+		range_val(addr->ip[3]) == range_max(addr->ip[3]) &&
+		range_val(addr->port) == range_max(addr->port))
 		return FALSE;
 
-	j = 0;
-	for (U64 i = 0; i < it->addrs_n; i++)
-	{
-		addr = &it->addrs[i];
-		addr->results = &it->results[j];
-
-		j += get_results_cnt(addr);
-	}
-	return TRUE;
-}
-
-bool address_iterator_next(AddressIterator it, ScanAddress *out)
-{
-	Address *addr;
-
-	it_lock(it);
-	if (it->addr_curr >= it->addrs_n)
-	{
-		it_unlock(it);
-		return FALSE;
-	}
-
-	addr = &it->addrs[it->addr_curr];
 	/* on gere d'abord le port */
 	if (range_val(addr->port) >= range_max(addr->port))
 	{ /* port max atteint: on change d'ip */
@@ -422,23 +407,6 @@ bool address_iterator_next(AddressIterator it, ScanAddress *out)
 			}
 		}
 
-		/* check si on a fini */
-		bool done = TRUE;
-		for (S32 i = 0; i < 4; i++)
-		{
-			if (range_min(addr->ip[i]) != range_max(addr->ip[i]) && range_val(addr->ip[i]) <= range_max(addr->ip[i]))
-			{
-				done = FALSE;
-				break;
-			}
-		}
-		if (done)
-		{
-			it->addr_curr++;
-			it_unlock(it);
-			return address_iterator_next(it, out);
-		}
-
 		/* update les overflows */
 		for (S32 i = 3; i >= 0; i--)
 		{
@@ -447,6 +415,28 @@ bool address_iterator_next(AddressIterator it, ScanAddress *out)
 		}
 	}
 	range_val(addr->port)++;
+	return TRUE;
+}
+
+bool address_iterator_next(AddressIterator it, ScanAddress *out)
+{
+	Address *addr;
+
+	it_lock(it);
+	if (it->addr_curr >= it->addrs_n)
+	{
+		it_unlock(it);
+		return FALSE;
+	}
+
+	addr = &it->addrs[it->addr_curr];
+
+	if (!address_next(addr))
+	{
+		it->addr_curr++;
+		it_unlock(it);
+		return address_iterator_next(it, out);
+	}
 
 	pthread_mutex_lock(&it->progress_lock);
 	it->progress++;
@@ -461,7 +451,7 @@ bool address_iterator_next(AddressIterator it, ScanAddress *out)
 		it_unlock(it);
 		return FALSE;
 	}
-	out->port = addr->port.x;
+	out->port = range_val(addr->port);
 
 	it_unlock(it);
 	return TRUE;
@@ -532,94 +522,167 @@ U32 address_get_src_ip(Address *addr)
 	return 0;
 }
 
-void address_iterator_set_result(AddressIterator it, ScanAddress addr)
+void address_iterator_set_result(ScanAddress addr, U32 results)
 {
-	ScanAddress *new;
-
-	pthread_mutex_lock(&it->results_lock);
-
-	if (it->results_n >= it->results_alloc)
-	{
-		new = malloc(sizeof(ScanAddress) * it->results_alloc * 2);
-		ft_memcpy(new, it->results, sizeof(ScanAddress) * it->results_n);
-		free(it->results);
-		it->results = new;
-		it->results_alloc *= 2;
-	}
-	it->results[it->results_n++] = addr;
-
-	pthread_mutex_unlock(&it->results_lock);
+	ft_printf("%lu\n", addr_iterations_count(addr.addr));
+	addr.addr->results[addr_iterations_count(addr.addr)] = results;
 }
 
-static S32 results_sort(void *a, void *b)
+Address *address_iterator_get_array(AddressIterator it, U32 *len)
 {
-	ScanAddress *addr1 = (ScanAddress *)a;
-	ScanAddress *addr2 = (ScanAddress *)b;
+	*len = it->addrs_n;
+	return it->addrs;
+}
 
-	if ((S64)addr1->dstaddr - (S64)addr2->dstaddr == 0)
-		return (S32)addr1->port - (S32)addr2->port;
-	return (S64)addr1->dstaddr - (S64)addr2->dstaddr;
+// Fonction pour récupérer la version d'un service
+static void get_service_version(uint32_t ip_address, int port)
+{
+	int sockfd;
+	struct sockaddr_in serv_addr;
+	char buffer[1024];
+
+	// Créer une socket
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd < 0)
+	{
+		perror("Erreur lors de la création de la socket");
+		exit(EXIT_FAILURE);
+	}
+
+	// Configurer l'adresse du serveur
+	memset(&serv_addr, 0, sizeof(serv_addr));
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_port = htons(port);
+
+	// Assigner l'adresse IP en u32 directement dans la structure
+	serv_addr.sin_addr.s_addr = htonl(ip_address);
+
+	// Connexion au serveur
+	if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+	{
+		perror("Erreur lors de la connexion");
+		close(sockfd);
+		exit(EXIT_FAILURE);
+	}
+
+	// Envoyer une requête HTTP simple pour récupérer la bannière
+	const char *http_request = "HEAD / HTTP/1.1\r\nHost: example.com\r\n\r\n";
+	write(sockfd, http_request, strlen(http_request));
+
+	// Lire la réponse du serveur
+	memset(buffer, 0, sizeof(buffer));
+	int bytes_received = read(sockfd, buffer, sizeof(buffer) - 1);
+	if (bytes_received < 0)
+	{
+		perror("Erreur lors de la lecture de la réponse");
+		close(sockfd);
+		// exit(EXIT_FAILURE);
+	}
+
+	// Afficher la bannière (version du serveur)
+	printf("Réponse du serveur :\n%s\n", buffer);
+
+	// Fermer la connexion
+	close(sockfd);
+}
+
+static const_string get_service_name(U16 port, const_string protocol)
+{
+	static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+	struct servent *service;
+	string out;
+
+	pthread_mutex_lock(&lock);
+	if ((service = getservbyport(htons(port), protocol)) != NULL)
+		out = service->s_name;
+	out = "Unknown service";
+	pthread_mutex_unlock(&lock);
+	return out;
+}
+
+static void find_service(int port, const char *protocol)
+{
+	FILE *file = fopen("/etc/services", "r");
+	if (!file)
+	{
+		perror("Impossible d'ouvrir /etc/services");
+		exit(1);
+	}
+
+	char line[256];
+	while (fgets(line, sizeof(line), file))
+	{
+		// Ignorer les commentaires ou les lignes vides
+		if (line[0] == '#' || strlen(line) < 2)
+		{
+			continue;
+		}
+
+		char service[50], proto[10];
+		int file_port;
+		char *comment_position = strchr(line, '#'); // Pour supprimer les commentaires
+
+		// Supprimer le commentaire si présent
+		if (comment_position)
+		{
+			*comment_position = '\0'; // Terminer la ligne avant le commentaire
+		}
+
+		// Extraire le nom du service, le numéro de port et le protocole
+		if (sscanf(line, "%49s %d/%9s", service, &file_port, proto) == 3)
+		{
+			if (file_port == port && strcmp(proto, protocol) == 0)
+			{
+				ft_printf("%s\n", service);
+				fclose(file);
+				return;
+			}
+		}
+	}
+
+	printf("Service non trouvé pour le port %d/%s\n", port, protocol);
+	fclose(file);
 }
 
 void address_iterator_results(AddressIterator it)
 {
 	char buf[40];
-	U32 curr_addr;
-	U32 curr_results;
-	U16 port_st;
-	U32 streak_n;
+	int count = 0;
 
-	ft_sort(it->results, sizeof(*it->results), it->results_n, results_sort);
-
-	for (U64 i = 0; i < it->results_n; i++)
+	for (U32 i = 0; i < it->addrs_n; i++)
 	{
-		while (i < it->results_n && (it->results[i].results & 0b010101010101) == 0)
-			i++;
-		if (i >= it->results_n)
-			break;
+		Address *addr = &it->addrs[i];
+		address_reset(addr);
 
-		curr_addr = it->results[i].dstaddr;
-		curr_results = it->results[i].results;
-		port_st = it->results[i].port;
-		streak_n = 0;
-		while (i < it->results_n && it->results[i].dstaddr == curr_addr && it->results[i].results == curr_results)
+		ft_printf("PORT\tSTATE\tSERVICE\n");
+		while (address_next(addr))
 		{
-			streak_n++;
-			i++;
-		}
-		i--;
-		if (streak_n > 1)
-			ft_printf("%s:[%u-%u] : ", addr_to_str(curr_addr), port_st, it->results[i].port);
-		else
-			ft_printf("%s:%u : ", addr_to_str(curr_addr), it->results[i].port);
+			U32 result = addr->results[addr_iterations_count(addr)];
 
-		for (U8 s = 1; s < ((g_scans << 1) & (~g_scans)); s <<= 1)
-		{
-			if (!(s & g_scans))
-				continue;
-
-			string res_str;
-			U32 r = get_result(s, it->results[i].results);
-
-			switch (r)
+			for (U8 s = 1; s < g_scans + 1; s <<= 1)
 			{
-			case R_CLOSED:
-				res_str = FT_RED"CLOSED"FT_CRESET;
-				break;
-			case R_OPEN:
-				res_str = FT_GREEN"OPEN"FT_CRESET;
-				break;
-			case R_FILTERED:
-				res_str = FT_RED"FILTERED"FT_CRESET;
-				break;
-			case R_UNFILTERED:
-				res_str = FT_GREEN"UNFILTERED"FT_CRESET;
-				break;
-			}
+				if (!(g_scans & s))
+					continue;
 
-			scan_to_str(s, buf, sizeof(buf));
-			ft_printf("%s:%s ", buf, res_str);
+				scan_to_str(s, buf, sizeof(buf));
+
+				if (get_result(s, result) == R_OPEN)
+				{
+					ft_printf("%u \t OPEN\t ", range_val(addr->port));
+					// get_service_version(it->results[i].dstaddr,it->results[i].port );
+					find_service(range_val(addr->port), "tcp");
+					// ft_printf(" service :%s \n",get_service_name(it->results[i].port, "TCP"));
+				}
+				else
+					count += 1;
+			}
 		}
-		ft_printf("\n");
+		// printf("g san = %u \n", g_scans);
+		if (g_scans & S_SYN)
+			ft_printf("Not show : %d : closed tcp port (reset) \n\n ", count);
+		else if (g_scans & S_XMAS)
+			ft_printf("Not show : %d : filtred TCP PORT no response \n\n ", count);
+		else
+			ft_printf("Nombre de port fermes : %d \n", count);
 	}
 }

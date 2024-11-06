@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/14 11:07:17 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/30 01:38:36 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/05 17:06:44 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,19 +26,21 @@
 #define R_CLOSED 0x0
 #define R_OPEN 0x1
 #define R_FILTERED 0x2
-#define R_UNFILTERED 0x3
-#define mk_result(scan_type, result) ((result & 0x3) << (__builtin_ctz(scan_type) * 2))
-#define get_result(scan_type, results) ((results >> (__builtin_ctz(scan_type) * 2)) & 0x3)
+#define mk_result(scan_type, result) (((result) & 0x3) << (__builtin_ctz(scan_type) * 2))
+#define get_result(scan_type, results) (((results) >> (__builtin_ctz(scan_type) * 2)) & 0x3)
+
+#define range_val(range) (range).x
+#define range_min(range) (range).y
+#define range_max(range) (range).z
 
 typedef struct s_addr_iterator *AddressIterator;
-typedef struct s_scan_addr ScanAddress;
 
 typedef struct s_address
 {
 	string source_str;
 	t_iv3 port;
 	t_iv3 ip[4];
-	ScanAddress *results;
+	U32 *results;
 } Address;
 
 typedef struct s_scan_addr
@@ -47,7 +49,6 @@ typedef struct s_scan_addr
 	U32 srcaddr;
 	U32 dstaddr;
 	U16 port;
-	U32 results;
 } ScanAddress;
 
 /*
@@ -65,14 +66,16 @@ Takes care of error messages
 */
 bool address_iterator_ingest(AddressIterator it, const_string addr_str);
 
-bool address_iterator_prepare(AddressIterator it);
+Address *address_iterator_get_array(AddressIterator it, U32 *len);
+void address_reset(Address *addr);
+bool address_next(Address *addr);
 
 /*
 Returns NULL when no more address
 No failure
 */
 bool address_iterator_next(AddressIterator it, ScanAddress *out);
-void address_iterator_set_result(AddressIterator it, ScanAddress addr);
+void address_iterator_set_result(ScanAddress addr, U32 results);
 void address_iterator_results(AddressIterator it);
 
 /* No failure */

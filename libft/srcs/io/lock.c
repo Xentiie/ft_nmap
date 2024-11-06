@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/12 11:50:12 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/22 04:47:34 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/05 17:24:58 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,6 +30,12 @@ typedef struct
 static t_lock_ht *lock_ht = NULL;
 static pthread_once_t lock_ht_once = PTHREAD_ONCE_INIT;
 
+__attribute__((destructor))
+static void lock_ht_cleanup()
+{
+	free(lock_ht);
+}
+
 static void lock_ht_init()
 {
 	if (UNLIKELY((lock_ht = malloc(sizeof(t_lock_ht))) == NULL))
@@ -43,6 +49,7 @@ static void lock_ht_init()
 		return;
 	}
 }
+
 static t_lock_ht *get_lock_ht()
 {
 	pthread_once(&lock_ht_once, lock_ht_init);
