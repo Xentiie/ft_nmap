@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/06 13:11:39 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/06 13:20:37 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,7 +44,6 @@ bool g_use_custom_interface;
 U32 g_srcaddr;
 U8 g_ttl;
 t_time g_timeout;
-bool g_colored_output;
 
 static const t_long_opt long_opts[] = {
 	{"file", TRUE, NULL, 'f'},
@@ -133,10 +132,6 @@ int main()
 		{
 			switch (opt)
 			{
-			case 1000:
-				g_colored_output = FALSE;
-				break;
-
 			case 'f':
 				dstaddr_file = ft_optarg;
 				break;
@@ -422,8 +417,7 @@ int main()
 		while (address_iterator_next(it, &dummy_addr))
 		{
 			addr = dummy_addr.addr;
-			range_val(addr->port)--;
-			while (address_next(addr))
+			do
 			{
 				pr_header = FALSE;
 				closed_cnt = 0;
@@ -472,7 +466,7 @@ int main()
 					else
 						ft_printf("Nombre de ports fermes: %d \n", closed_cnt);
 				}
-			}
+			} while (address_next(addr));
 		}
 	}
 

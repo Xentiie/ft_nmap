@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 16:31:46 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/05 15:11:35 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/06 13:21:05 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,7 +24,6 @@
 #include "address_iterator.h"
 
 #define array_len(x) (sizeof(x) / sizeof((x)[0]))
-
 
 struct s_ip_hdr
 {
@@ -156,7 +155,6 @@ extern U32 g_srcaddr;				/* custom source address */
 extern bool g_use_custom_interface; /* custom interface specified, use g_srcaddr as source address */
 extern U8 g_ttl;					/* ttl value */
 extern t_time g_timeout;			/* timeout value */
-extern bool g_colored_output;
 
 /* threads */
 void *run_test(AddressIterator it);

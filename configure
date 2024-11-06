@@ -453,6 +453,7 @@ configure() {
 		cf_add_cflag "-Wall"
 		cf_add_cflag "-Wextra"
 		cf_add_cflag "-Wno-unknown-pragmas"
+		cf_add_cflag "-g"
 
 		cf_add_pkg "./libft"
 
