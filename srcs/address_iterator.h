@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/14 11:07:17 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/06 03:30:31 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/06 12:57:50 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,47 +51,18 @@ typedef struct s_scan_addr
 	U16 port;
 } ScanAddress;
 
-/*
-Returns NULL on failure
-Takes care of error messages
-*/
-AddressIterator address_iterator_init(U16 ports_min, U16 ports_max);
-
-/* No failure */
-void address_iterator_destroy(AddressIterator it);
-
-/*
-Returns FALSE on failure
-Takes care of error messages
-*/
-bool address_iterator_ingest(AddressIterator it, const_string addr_str);
-
-Address *address_iterator_get_array(AddressIterator it, U32 *len);
-void address_iterator_reset(AddressIterator it);
+U64 address_iterations_cnt(Address *addr);
 void address_reset(Address *addr);
 bool address_next(Address *addr);
+U32 address_get_dst_ip(Address *addr);
+U32 address_get_src_ip(Address *addr);
 
-U64 addr_iterations_count(Address *addr);
-
-/*
-Returns NULL when no more address
-No failure
-*/
+AddressIterator address_iterator_init(U16 ports_min, U16 ports_max);
+void address_iterator_destroy(AddressIterator it);
+bool address_iterator_ingest(AddressIterator it, const_string addr_str);
+void address_iterator_reset(AddressIterator it);
 bool address_iterator_next(AddressIterator it, ScanAddress *out);
 void address_iterator_set_result(ScanAddress addr, U32 results);
-void address_iterator_results(AddressIterator it);
-
-/* No failure */
-U64 address_iterator_progress(AddressIterator it);
-/* No failure */
 U64 address_iterator_total(AddressIterator it);
-/* No failure */
-U32 address_get_dst_ip(Address *addr);
-
-/*
-Returns 0 with `ft_errno != 0` on failure
-Takes care of error messages
-*/
-U32 address_get_src_ip(Address *addr);
 
 #endif

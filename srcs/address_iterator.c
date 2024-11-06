@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 01:04:08 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/06 03:59:19 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/06 13:10:28 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,6 @@
 #include "libft/limits.h"
 #include "libft/io.h"
 #include "libft/ansi.h"
-
 
 #include "address_iterator.h"
 #include "ft_nmap.h"
@@ -65,53 +64,10 @@ typedef struct s_addr_iterator
 	pthread_cond_t progress_cond;
 } *AddressIterator;
 
+static void it_lock(AddressIterator it);
+static void it_unlock(AddressIterator it);
 
-static U32 dns_resolve(const_string addr)
-{
-	struct addrinfo hints;
-	struct addrinfo *res;
-	struct addrinfo *ptr;
-	U32 out_addr;
-	S32 ret;
-
-	hints = (struct addrinfo){0};
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-
-	if ((ret = getaddrinfo(addr, NULL, &hints, &res)) != 0)
-	{
-		ft_fprintf(ft_fstderr, "%s: %s: %s\n", ft_argv[0], addr, gai_strerror(ret));
-		ft_errno = FT_ESYSCALL;
-		return 0;
-	}
-	ptr = res;
-	while (res->ai_family != AF_INET)
-		res = res->ai_next;
-
-	if (!res)
-	{
-		ft_fprintf(ft_fstderr, "%s: %s: no address associated with hostname\n", ft_argv[0], addr);
-		ft_errno = FT_EINVOP;
-		return 0;
-	}
-
-	out_addr = ((struct sockaddr_in *)res->ai_addr)->sin_addr.s_addr;
-	freeaddrinfo(ptr);
-	ft_errno = FT_OK;
-	return out_addr;
-}
-
-static U64 addr_iterations_total(Address *addr)
-{
-	U64 total;
-
-	total = range_max(addr->port) - range_min(addr->port) + 1;
-	for (U8 i = 0; i < 4; i++)
-		total *= range_max(addr->ip[i]) - range_min(addr->ip[i]) + 1;
-	return total;
-}
-
-U64 addr_iterations_count(Address *addr)
+U64 address_iterations_cnt(Address *addr)
 {
 	U64 total;
 
@@ -121,20 +77,109 @@ U64 addr_iterations_count(Address *addr)
 	return total - 1;
 }
 
-static void it_lock(AddressIterator it)
+void address_reset(Address *addr)
 {
-	pthread_mutex_lock(&it->global_lock);
+	range_val(addr->ip[0]) = range_min(addr->ip[0]);
+	range_val(addr->ip[1]) = range_min(addr->ip[1]);
+	range_val(addr->ip[2]) = range_min(addr->ip[2]);
+	range_val(addr->ip[3]) = range_min(addr->ip[3]);
+	range_val(addr->port) = range_min(addr->port) - 1;
 }
 
-static void it_unlock(AddressIterator it)
+bool address_next(Address *addr)
 {
-	pthread_mutex_unlock(&it->global_lock);
+	if (
+		range_val(addr->ip[0]) >= range_max(addr->ip[0]) &&
+		range_val(addr->ip[1]) >= range_max(addr->ip[1]) &&
+		range_val(addr->ip[2]) >= range_max(addr->ip[2]) &&
+		range_val(addr->ip[3]) >= range_max(addr->ip[3]) &&
+		range_val(addr->port) >= range_max(addr->port))
+		return FALSE;
+
+	/* on gere d'abord le port */
+	if (range_val(addr->port) >= range_max(addr->port))
+	{ /* port max atteint: on change d'ip */
+		range_val(addr->port) = range_min(addr->port) - 1;
+
+		/* incremente les valeurs des ip */
+		for (S32 i = 3; i >= 0; i--)
+		{
+			if (range_min(addr->ip[i]) != range_max(addr->ip[i]))
+			{ /* ce byte est représenté par une range */
+				range_val(addr->ip[i])++;
+				if (range_val(addr->ip[i]) <= range_max(addr->ip[i]))
+					break; /* on va incrementer le reste uniquement si on overflow ici */
+			}
+		}
+
+		/* update les overflows */
+		for (S32 i = 3; i >= 0; i--)
+		{
+			if (range_val(addr->ip[i]) > range_max(addr->ip[i]))
+				range_val(addr->ip[i]) = range_min(addr->ip[i]);
+		}
+	}
+	range_val(addr->port)++;
+	return TRUE;
+}
+
+U32 address_get_dst_ip(Address *addr)
+{
+	U32 out_addr;
+
+	out_addr = 0;
+	for (S32 i = 0; i < 4; i++)
+		out_addr |= (range_val(addr->ip[i]) << (8 * i));
+	return out_addr;
+}
+
+U32 address_get_src_ip(Address *addr)
+{
+	U32 dstaddr;
+	U32 srcaddr;
+
+	struct ifaddrs *ifaddr, *ifa;
+	struct sockaddr_in *sa;
+
+	dstaddr = address_get_dst_ip(addr);
+	if (getifaddrs(&ifaddr) == -1)
+	{
+		ft_fprintf(ft_fstderr, "%s: %s\n", ft_argv[0], ft_strerror2(ft_errno));
+		ft_errno = FT_ESYSCALL;
+		return 0;
+	}
+
+	/* No interface specified */
+	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
+	{
+		if (ifa->ifa_addr == NULL || !ft_strcmp(ifa->ifa_name, "lo"))
+			continue;
+
+		if (ifa->ifa_addr->sa_family == AF_INET)
+		{
+			sa = (struct sockaddr_in *)ifa->ifa_addr;
+			if ((sa->sin_addr.s_addr & ifa->ifa_netmask->sa_data[0]) ==
+				(dstaddr & ifa->ifa_netmask->sa_data[0]))
+			{
+				srcaddr = sa->sin_addr.s_addr;
+				freeifaddrs(ifaddr);
+				ft_errno = FT_OK;
+				return srcaddr;
+			}
+		}
+	}
+	freeifaddrs(ifaddr);
+
+	ft_fprintf(ft_fstderr, "%s: no suitable interface found\n", ft_argv[0]);
+	ft_errno = FT_EINVOP;
+	return 0;
 }
 
 AddressIterator address_iterator_init(U16 default_port_min, U16 default_port_max)
 {
 	const string ip_reg = "^([0-9]+|[0-9]+-[0-9]+)\\.([0-9]+|[0-9]+-[0-9]+)\\.([0-9]+|[0-9]+-[0-9]+)\\.([0-9]+|[0-9]+-[0-9]+)$";
 	const string range_reg = "^([0-9]+)-([0-9]+)$";
+	pthread_mutexattr_t attr;
 	AddressIterator it;
 	S32 ret;
 
@@ -148,7 +193,6 @@ AddressIterator address_iterator_init(U16 default_port_min, U16 default_port_max
 	it->total = 0;
 	it->results_addr_max_len = 0;
 
-	pthread_mutexattr_t attr;
 	pthread_mutexattr_init(&attr);
 	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK_NP);
 	if (UNLIKELY(pthread_mutex_init(&it->global_lock, &attr) != 0) ||
@@ -214,6 +258,10 @@ bool address_iterator_ingest(AddressIterator it, const_string addr_str)
 	string byte_str;
 	U64 source_addr_str_len;
 	U32 addr_iter_total;
+	struct addrinfo hints;
+	struct addrinfo *res;
+	struct addrinfo *ptr;
+	S32 ret;
 
 	byte_str = NULL;
 	if (UNLIKELY((str = ft_strdup(addr_str)) == NULL))
@@ -275,9 +323,31 @@ bool address_iterator_ingest(AddressIterator it, const_string addr_str)
 		/* check si l'entrée est un hostname, ou une addresse ip */
 		if (regexec(&it->ip_reg, str, array_len(matches), matches, 0) == REG_NOMATCH)
 		{ /* hostname */
-			U32 dstaddr = dns_resolve(str);
-			if (dstaddr == 0 && ft_errno != 0)
+			U32 dstaddr;
+
+			hints = (struct addrinfo){0};
+			hints.ai_family = AF_INET;
+			hints.ai_socktype = SOCK_STREAM;
+
+			if ((ret = getaddrinfo(str, NULL, &hints, &res)) != 0)
+			{
+				ft_fprintf(ft_fstderr, "%s: %s: %s\n", ft_argv[0], str, gai_strerror(ret));
 				goto exit_err;
+			}
+			ptr = res;
+			while (res->ai_family != AF_INET)
+				res = res->ai_next;
+
+			if (!res)
+			{
+				ft_fprintf(ft_fstderr, "%s: %s: no address associated with hostname\n", ft_argv[0], str);
+				goto exit_err;
+				return 0;
+			}
+
+			dstaddr = ((struct sockaddr_in *)res->ai_addr)->sin_addr.s_addr;
+			freeaddrinfo(ptr);
+
 			for (U8 i = 0; i < 4; i++)
 			{
 				range_val(addr.ip[i]) = (dstaddr >> (8 * i)) & 0xFF;
@@ -371,52 +441,6 @@ exit_err:
 	return FALSE;
 }
 
-void address_reset(Address *addr)
-{
-	range_val(addr->ip[0]) = range_min(addr->ip[0]);
-	range_val(addr->ip[1]) = range_min(addr->ip[1]);
-	range_val(addr->ip[2]) = range_min(addr->ip[2]);
-	range_val(addr->ip[3]) = range_min(addr->ip[3]);
-	range_val(addr->port) = range_min(addr->port) - 1;
-}
-
-bool address_next(Address *addr)
-{
-	if (
-		range_val(addr->ip[0]) == range_max(addr->ip[0]) &&
-		range_val(addr->ip[1]) == range_max(addr->ip[1]) &&
-		range_val(addr->ip[2]) == range_max(addr->ip[2]) &&
-		range_val(addr->ip[3]) == range_max(addr->ip[3]) &&
-		range_val(addr->port) == range_max(addr->port))
-		return FALSE;
-
-	/* on gere d'abord le port */
-	if (range_val(addr->port) >= range_max(addr->port))
-	{ /* port max atteint: on change d'ip */
-		range_val(addr->port) = range_min(addr->port) - 1;
-
-		/* incremente les valeurs des ip */
-		for (S32 i = 3; i >= 0; i--)
-		{
-			if (range_min(addr->ip[i]) != range_max(addr->ip[i]))
-			{ /* ce byte est représenté par une range */
-				range_val(addr->ip[i])++;
-				if (range_val(addr->ip[i]) <= range_max(addr->ip[i]))
-					break; /* on va incrementer le reste uniquement si on overflow ici */
-			}
-		}
-
-		/* update les overflows */
-		for (S32 i = 3; i >= 0; i--)
-		{
-			if (range_val(addr->ip[i]) > range_max(addr->ip[i]))
-				range_val(addr->ip[i]) = range_min(addr->ip[i]);
-		}
-	}
-	range_val(addr->port)++;
-	return TRUE;
-}
-
 void address_iterator_reset(AddressIterator it)
 {
 	for (U32 i = 0; i < it->addrs_n; i++)
@@ -463,71 +487,6 @@ bool address_iterator_next(AddressIterator it, ScanAddress *out)
 	return TRUE;
 }
 
-U64 address_iterator_total(AddressIterator it)
-{
-	return it->total;
-}
-
-U64 address_iterator_progress(AddressIterator it)
-{
-	U64 out;
-
-	__atomic_load(&it->progress, &out, __ATOMIC_RELAXED);
-	return out;
-}
-
-U32 address_get_dst_ip(Address *addr)
-{
-	U32 out_addr;
-
-	out_addr = 0;
-	for (S32 i = 0; i < 4; i++)
-		out_addr |= (range_val(addr->ip[i]) << (8 * i));
-	return out_addr;
-}
-
-U32 address_get_src_ip(Address *addr)
-{
-	U32 dstaddr;
-	U32 srcaddr;
-
-	struct ifaddrs *ifaddr, *ifa;
-	struct sockaddr_in *sa;
-
-	dstaddr = address_get_dst_ip(addr);
-	if (getifaddrs(&ifaddr) == -1)
-	{
-		ft_fprintf(ft_fstderr, "%s: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-		ft_errno = FT_ESYSCALL;
-		return 0;
-	}
-
-	/* No interface specified */
-	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
-	{
-		if (ifa->ifa_addr == NULL || !ft_strcmp(ifa->ifa_name, "lo"))
-			continue;
-
-		if (ifa->ifa_addr->sa_family == AF_INET)
-		{
-			sa = (struct sockaddr_in *)ifa->ifa_addr;
-			if ((sa->sin_addr.s_addr & ifa->ifa_netmask->sa_data[0]) ==
-				(dstaddr & ifa->ifa_netmask->sa_data[0]))
-			{
-				srcaddr = sa->sin_addr.s_addr;
-				freeifaddrs(ifaddr);
-				ft_errno = FT_OK;
-				return srcaddr;
-			}
-		}
-	}
-	freeifaddrs(ifaddr);
-
-	ft_fprintf(ft_fstderr, "%s: no suitable interface found\n", ft_argv[0]);
-	ft_errno = FT_EINVOP;
-	return 0;
-}
-
 void address_iterator_set_result(ScanAddress addr, U32 results)
 {
 	Address dummyaddr;
@@ -539,63 +498,20 @@ void address_iterator_set_result(ScanAddress addr, U32 results)
 	range_val(dummyaddr.ip[3]) = (addr.dstaddr >> 24) & 0xFF;
 	range_val(dummyaddr.port) = addr.port;
 
-	addr.addr->results[addr_iterations_count(&dummyaddr)] = results;
+	addr.addr->results[address_iterations_cnt(&dummyaddr)] = results;
 }
 
-Address *address_iterator_get_array(AddressIterator it, U32 *len)
+U64 address_iterator_total(AddressIterator it)
 {
-	*len = it->addrs_n;
-	return it->addrs;
+	return it->total;
 }
 
-// Fonction pour récupérer la version d'un service
-static void get_service_version(uint32_t ip_address, int port)
+static void it_lock(AddressIterator it)
 {
-	int sockfd;
-	struct sockaddr_in serv_addr;
-	char buffer[1024];
+	pthread_mutex_lock(&it->global_lock);
+}
 
-	// Créer une socket
-	sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (sockfd < 0)
-	{
-		perror("Erreur lors de la création de la socket");
-		exit(EXIT_FAILURE);
-	}
-
-	// Configurer l'adresse du serveur
-	memset(&serv_addr, 0, sizeof(serv_addr));
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_port = htons(port);
-
-	// Assigner l'adresse IP en u32 directement dans la structure
-	serv_addr.sin_addr.s_addr = htonl(ip_address);
-
-	// Connexion au serveur
-	if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
-	{
-		perror("Erreur lors de la connexion");
-		close(sockfd);
-		exit(EXIT_FAILURE);
-	}
-
-	// Envoyer une requête HTTP simple pour récupérer la bannière
-	const char *http_request = "HEAD / HTTP/1.1\r\nHost: example.com\r\n\r\n";
-	write(sockfd, http_request, strlen(http_request));
-
-	// Lire la réponse du serveur
-	memset(buffer, 0, sizeof(buffer));
-	int bytes_received = read(sockfd, buffer, sizeof(buffer) - 1);
-	if (bytes_received < 0)
-	{
-		perror("Erreur lors de la lecture de la réponse");
-		close(sockfd);
-		// exit(EXIT_FAILURE);
-	}
-
-	// Afficher la bannière (version du serveur)
-	printf("Réponse du serveur :\n%s\n", buffer);
-
-	// Fermer la connexion
-	close(sockfd);
+static void it_unlock(AddressIterator it)
+{
+	pthread_mutex_unlock(&it->global_lock);
 }

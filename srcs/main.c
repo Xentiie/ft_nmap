@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/06 03:58:56 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/06 13:11:39 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,8 +46,6 @@ U8 g_ttl;
 t_time g_timeout;
 bool g_colored_output;
 
-void *run_test_udp(AddressIterator it);
-
 static const t_long_opt long_opts[] = {
 	{"file", TRUE, NULL, 'f'},
 	{"help", FALSE, NULL, 'h'},
@@ -62,51 +60,9 @@ static const t_long_opt long_opts[] = {
 	{0},
 };
 
+static void find_service(int port, const char *protocol);
+static void get_service_version(uint32_t ip_address, int port);
 static void print_help();
-
-static void find_service(int port, const char *protocol)
-{
-	FILE *file = fopen("/etc/services", "r");
-	if (!file)
-	{
-		perror("Impossible d'ouvrir /etc/services");
-		exit(1);
-	}
-
-	char line[256];
-	while (fgets(line, sizeof(line), file))
-	{
-		// Ignorer les commentaires ou les lignes vides
-		if (line[0] == '#' || strlen(line) < 2)
-		{
-			continue;
-		}
-
-		char service[50], proto[10];
-		int file_port;
-		char *comment_position = strchr(line, '#'); // Pour supprimer les commentaires
-
-		// Supprimer le commentaire si présent
-		if (comment_position)
-		{
-			*comment_position = '\0'; // Terminer la ligne avant le commentaire
-		}
-
-		// Extraire le nom du service, le numéro de port et le protocole
-		if (sscanf(line, "%49s %d/%9s", service, &file_port, proto) == 3)
-		{
-			if (file_port == port && strcmp(proto, protocol) == 0)
-			{
-				ft_printf("%s\n", service);
-				fclose(file);
-				return;
-			}
-		}
-	}
-
-	printf("Service non trouvé pour le port %d/%s\n", port, protocol);
-	fclose(file);
-}
 
 int main()
 {
@@ -460,52 +416,63 @@ int main()
 		ScanAddress dummy_addr;
 		Address *addr;
 		U32 results;
+		bool pr_header;
 
-		closed_cnt = 0;
 		address_iterator_reset(it);
 		while (address_iterator_next(it, &dummy_addr))
 		{
 			addr = dummy_addr.addr;
-
-			ft_printf("Begin scan report for %s\n", addr->source_str);
-
-			ft_printf("PORT        STATE            SERVICE\n");
-			//ft_printf("65535/tcp opened|filtered  SERVICE\n");
+			range_val(addr->port)--;
 			while (address_next(addr))
 			{
-				results = addr->results[addr_iterations_count(addr)];
-
-				for (U8 s = 1; s < g_scans + 1; s <<= 1)
+				pr_header = FALSE;
+				closed_cnt = 0;
+				ft_printf("Begin scan report for %s\n", addr_to_str(address_get_dst_ip(addr)));
+				while (range_val(addr->port) <= range_max(addr->port))
 				{
-					if (!(g_scans & s))
-						continue;
+					results = addr->results[address_iterations_cnt(addr)];
 
-					scan_to_str(s, buf, sizeof(buf));
-
-					if (get_result(s, results) == R_OPEN)
+					for (U8 s = 1; s < g_scans + 1; s <<= 1)
 					{
-						ft_printf("%-11u %-17s", range_val(addr->port), "opened");
+						if (!(g_scans & s))
+							continue;
 
-						//find_service(range_val(addr->port), "tcp");
-						servent = getservbyport(htons(range_val(addr->port)), s == S_UDP ? "udp" : "tcp");
-						if (servent == NULL)
-							ft_printf("unknown\n");
+						scan_to_str(s, buf, sizeof(buf));
+
+						if (get_result(s, results) == R_OPEN)
+						{
+							if (!pr_header)
+							{
+								ft_printf("PORT        STATE            SERVICE\n");
+								pr_header = TRUE;
+							}
+							ft_printf("%-11u %-17s", range_val(addr->port), "opened");
+
+							// find_service(range_val(addr->port), "tcp");
+							servent = getservbyport(htons(range_val(addr->port)), s == S_UDP ? "udp" : "tcp");
+							if (servent == NULL)
+								ft_printf("unknown\n");
+							else
+								ft_printf("%s\n", servent->s_name);
+
+							// get_service_version(it->results[i].dstaddr,it->results[i].port );
+						}
 						else
-							ft_printf("%s\n", servent->s_name);
-
-						// get_service_version(it->results[i].dstaddr,it->results[i].port );
+							closed_cnt += 1;
 					}
+
+					range_val(addr->port)++;
+				}
+				if (closed_cnt > 0)
+				{
+					if (g_scans & S_SYN)
+						ft_printf("Not shown: %d: closed TCP ports (reset)\n\n", closed_cnt);
+					else if (g_scans & S_XMAS)
+						ft_printf("Not shown: %d: filtered TCP ports (no response)\n\n", closed_cnt);
 					else
-						closed_cnt += 1;
+						ft_printf("Nombre de ports fermes: %d \n", closed_cnt);
 				}
 			}
-
-			if (g_scans & S_SYN)
-				ft_printf("Not shown: %d: closed TCP ports (reset)\n\n", closed_cnt);
-			else if (g_scans & S_XMAS)
-				ft_printf("Not shown: %d: filtered TCP ports (no response)\n\n", closed_cnt);
-			else
-				ft_printf("Nombre de ports fermes: %d \n", closed_cnt);
 		}
 	}
 
@@ -514,6 +481,102 @@ int main()
 exit_err:
 	address_iterator_destroy(it);
 	return 1;
+}
+
+// Fonction pour récupérer la version d'un service
+static void get_service_version(uint32_t ip_address, int port)
+{
+	int sockfd;
+	struct sockaddr_in serv_addr;
+	char buffer[1024];
+
+	// Créer une socket
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd < 0)
+	{
+		perror("Erreur lors de la création de la socket");
+		exit(EXIT_FAILURE);
+	}
+
+	// Configurer l'adresse du serveur
+	memset(&serv_addr, 0, sizeof(serv_addr));
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_port = htons(port);
+
+	// Assigner l'adresse IP en u32 directement dans la structure
+	serv_addr.sin_addr.s_addr = htonl(ip_address);
+
+	// Connexion au serveur
+	if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+	{
+		perror("Erreur lors de la connexion");
+		close(sockfd);
+		exit(EXIT_FAILURE);
+	}
+
+	// Envoyer une requête HTTP simple pour récupérer la bannière
+	const char *http_request = "HEAD / HTTP/1.1\r\nHost: example.com\r\n\r\n";
+	write(sockfd, http_request, strlen(http_request));
+
+	// Lire la réponse du serveur
+	memset(buffer, 0, sizeof(buffer));
+	int bytes_received = read(sockfd, buffer, sizeof(buffer) - 1);
+	if (bytes_received < 0)
+	{
+		perror("Erreur lors de la lecture de la réponse");
+		close(sockfd);
+		// exit(EXIT_FAILURE);
+	}
+
+	// Afficher la bannière (version du serveur)
+	printf("Réponse du serveur :\n%s\n", buffer);
+
+	// Fermer la connexion
+	close(sockfd);
+}
+
+static void find_service(int port, const char *protocol)
+{
+	FILE *file = fopen("/etc/services", "r");
+	if (!file)
+	{
+		perror("Impossible d'ouvrir /etc/services");
+		exit(1);
+	}
+
+	char line[256];
+	while (fgets(line, sizeof(line), file))
+	{
+		// Ignorer les commentaires ou les lignes vides
+		if (line[0] == '#' || strlen(line) < 2)
+		{
+			continue;
+		}
+
+		char service[50], proto[10];
+		int file_port;
+		char *comment_position = strchr(line, '#'); // Pour supprimer les commentaires
+
+		// Supprimer le commentaire si présent
+		if (comment_position)
+		{
+			*comment_position = '\0'; // Terminer la ligne avant le commentaire
+		}
+
+		// Extraire le nom du service, le numéro de port et le protocole
+		if (sscanf(line, "%49s %d/%9s", service, &file_port, proto) == 3)
+		{
+			if (file_port == port && strcmp(proto, protocol) == 0)
+			{
+				ft_printf("%s\n", service);
+				fclose(file);
+				return;
+			}
+		}
+	}
+
+	printf("Service non trouvé pour le port %d/%s\n", port, protocol);
+	fclose(file);
 }
 
 static void print_help()
