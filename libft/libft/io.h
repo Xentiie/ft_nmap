@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/02/11 20:01:40 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/22 04:35:08 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/06 01:45:39 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -91,7 +91,7 @@ Returns FALSE
 ### ft_errno
 - FT_EOMEM if there was a failure allocating memory for internal data
 */
-bool ft_ffilelock(t_file *file);
+extern bool ft_ffilelock(t_file *file);
 
 /*
 Tries to lock the file.
@@ -101,7 +101,7 @@ Returns -1
 ### ft_errno
 - FT_EOMEM if there was a failure allocating memory for internal data
 */
-S32 ft_ftryfilelock(t_file *file);
+extern S32 ft_ftryfilelock(t_file *file);
 
 /*
 Unlocks the file
@@ -110,7 +110,7 @@ Returns FALSE
 ### ft_errno
 - FT_EOMEM if there was a failure allocating memory for internal data
 */
-bool ft_ffileunlock(t_file *file);
+extern bool ft_ffileunlock(t_file *file);
 
 /*
 Reads the whole file.
@@ -122,7 +122,7 @@ Sets ft_errno and returns NULL.
 - FT_ESYSCALL if a syscall fails
 - FT_EOMEM if out of memory
 */
-U8 *ft_readfile(filedesc fd, U64 *out_size);
+extern U8 *ft_readfile(filedesc fd, U64 *out_size);
 
 /*
 Reads the whole file.
@@ -134,12 +134,7 @@ Sets ft_errno and returns NULL.
 - FT_ESYSCALL if a syscall fails
 - FT_EOMEM if out of memory
 */
-U8 *ft_freadfile(t_file *file, U64 *out_size);
-
-/*
-Read the next line in fd, NULL if all lines are read.
-*/
-extern string ft_gnl(filedesc fd);
+extern U8 *ft_freadfile(t_file *file, U64 *out_size);
 
 /*
 printf !

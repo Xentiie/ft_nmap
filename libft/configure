@@ -1,158 +1,469 @@
 #!/bin/bash
 set -e
+cd "$(dirname "$0")"
 
-POSITIONAL_ARGS=()
+#===================================================
+join() {
+	local d=${1-} f=${2-}
+	if shift 2; then
+		printf %s "$f" "${@/#/$d}"
+	fi
+}
+cf_error() {
+    local i
+	local skip
 
-NAME="libft"
+	if [ "$#" -gt 2 ]; then
+		skip=$(eval "$2+1")
+		export skip
+	else
+		skip=1
+		export skip
+	fi
 
+	echo "$_OWN_NAME: $1"
+	for ((i=skip; i<${#FUNCNAME[@]}; i++)); do
+		if [[ "${FUNCNAME[i]}" == cf_* ]]; then echo -n "  "; fi
+        echo "  at ${FUNCNAME[i]} (${BASH_SOURCE[i]}:${BASH_LINENO[i-1]})"
+    done
+}
+
+_OWN_NAME=$0
+_N=0
+
+#Global config
+INDENT=0
+OUTPUT_FILE="config.mk"
 OBJS_PATH="./objs"
-SRCS_PATH="./srcs"
-IGNORES="inflate_block*"
-
-CC_WINDOWS=x86_64-w64-mingw32-gcc
-CC_LINUX=gcc
-
-MKLIB=
-
 RM="rm -rf"
-CFLAGS=
-INCLUDES=
-LIBS_PATHS=
-LIBS=
+CC="gcc"
+#Global variables
+OUT_INCLUDES=()
+OUT_LIBS=()
+OUT_LIBS_PATHS=()
+G_CFLAGS=()
+G_INCLUDES=()
 
-STATIC="true"
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        -t|--target)
-            if [ "$2" != "windows" ] && [ "$2" != "linux" ]; then
-                echo "Invalid option for -t: $2"
-            fi
-            TARGET="$2"
-            shift # past argument
-            shift # past value
-            ;;
-        -d|--dynamic)
-            STATIC="false"
-            shift
-            ;;
-		-c|--coverage)
-			COVERAGE="true"
-			shift
-			;;
-		--post-coverage)
-			echo Available profiling data:
-			for f in $(find ./objs -name "*.gcda"); do
-				f_basename=$(basename $f)
-				srcs_path=$(find ./srcs -name "${f_basename%.gcda}.c")
-				echo "	$srcs_path"
-				mv $f `dirname $srcs_path`
-			done
-			exit 0
-			;;
-		--clean-coverage)
-			echo "This will remove:"
-			find ./srcs ./objs -name "*.gcda" -or -name "*.gcno"
-			read -r -p "Are you sure? [y/N] " response
-			case "$response" in
-			    [yY][eE][sS]|[yY])
-					for f in $(find ./srcs ./objs -name "*.gcda" -or -name "*.gcno"); do
-						echo "Removing $f"
-						rm $f
-					done
-			        ;;
-			    *)
-					echo "Nothing done"
-			        ;;
-			esac
-			exit 0
-			;;
-        -*|--*)
-            echo "Unknown option $1"
-            exit 1
-            ;;
-        *)
-            POSITIONAL_ARGS+=("$1") # save positional arg
-            shift # past argument
-            ;;
-    esac
-done
+#make = write config.mk
+#config = write formatted libs and cflags
+#json = write formatted json
+MODE="make"
+TARGET_NAME=""
+RULE_NAME=""
 
-if [[ "$COVERAGE" == "true" ]]; then
-	CFLAGS="$CFLAGS -fprofile-arcs -ftest-coverage -O0"
-	CC_LINUX=gcc-11
-fi
-
-if [[ "$STATIC" == "true" ]]; then
-    NAME="$NAME.a"
-    MKLIB='ar -rcs $(NAME) $(OBJS)'
-else
-    NAME="$NAME.so"
-    CFLAGS="$CFLAGS -fPIC"
-    MKLIB='$(CC) -shared $(OBJS) -o $(NAME)'
-fi
-
-if [ -z "$TARGET" ]; then
-    if [ -f "/proc/sys/fs/binfmt_misc/WSLInterop" ]; then
-        TARGET="windows"
-    else
-        TARGET="linux"
-    fi
-fi
-
-if [ "$TARGET" = "windows" ]; then
-    CC=$CC_WINDOWS
-    CFLAGS="-DFT_OS_WIN $CFLAGS"
-
-elif [ "$TARGET" = "linux" ]; then
-    CC=$CC_LINUX
-    CFLAGS="-DFT_OS_LINUX $CFLAGS"
-
-else
-    echo Not supported, defaulting to linux
-    CC=$CC_LINUX
-    CFLAGS="-DFT_OS_UNKNOWN $CFLAGS"
-fi
+#Target specific infos
+CFLAGS=()
+INCLUDES=()
+LIBS=()
+LIBS_PATHS=()
 
 SRCS=()
 OBJS=()
-readarray -d '' SRCS < <(find $SRCS_PATH -type f -name '*.c' -not -name $IGNORES -print0)
-readarray -d '' OBJS < <(for i in "${!SRCS[@]}"; do printf "$OBJS_PATH/`basename ${SRCS[i]%.c}.o`\0"; done)
 
-echo -n > config.mk
+IMPORTS=()
+IMPORTS_INCLUDES=()
+IMPORTS_LIBS=()
+IMPORTS_LIBS_PATHS=()
 
-echo "NAME=$NAME" >> config.mk
-echo ".DEFAULT_GOAL := all" >> config.mk
-echo "all: objs "'$(NAME)' >> config.mk
-echo "" >> config.mk
+#Appends text to the config file using printf
+cf_append() {
+	if [ "$MODE" != "make" ]; then return; fi
+	for ((i=0; i<INDENT; i++)); do
+		printf "\t" >> $OUTPUT_FILE
+	done
+	printf "$@" >> $OUTPUT_FILE
+}
 
-echo "RM=$RM" >> config.mk
-echo "CC=$CC" >> config.mk
-echo "MKLIB=$MKLIB" >> config.mk
-echo "CFLAGS=$CFLAGS" >> config.mk
-echo "INCLUDES=$INCLUDES" >> config.mk
-echo "LIBS_PATHS=$LIBS_PATHS" >> config.mk
-echo "LIBS=$LIBS" >> config.mk
-echo "OBJS_PATH=$OBJS_PATH" >> config.mk
-echo -e "SRCS=${SRCS[@]}" >> config.mk
-echo -e "OBJS=${OBJS[@]}" >> config.mk
-echo "" >> config.mk
-
-printf "objs:\n\tmkdir -p %s" "$OBJS_PATH" >> config.mk
-echo "" >> config.mk
-
-for i in "${!SRCS[@]}"; do
-    printf "%s: %s\n" "${OBJS[i]}" "${SRCS[i]}" >> config.mk
-    printf "\t%s %s %s -c %s -o %s\n" '$(CC)' '$(CFLAGS)' '$(INCLUDES)' "${SRCS[i]}" "${OBJS[i]}" >> config.mk
-	if [[ "$COVERAGE" == "true" ]]; then
-		printf "\tmv %s %s\n" "${OBJS[i]%.o}.gcno" `dirname ${SRCS[i]}` >> config.mk
+#Global setters
+cf_set_mode() {
+	if [ "$1" != "make" ] && [ "$1" != "config" ] && [ "$1" != "json" ]; then
+		cf_error "mode '$1': should be make/config/json"
 	fi
-	printf "\n" >> config.mk
-done
-echo "" >> config.mk
+	MODE=$1
+}
+cf_add_global_cflag() {
+	G_CFLAGS+=("$1")
+}
+cf_fmt_global_cflags() {
+	echo "${G_CFLAGS[@]}"
+}
+cf_add_global_include() {
+	G_INCLUDES+=("$1")
+}
+cf_fmt_global_includes() {
+	out=""
+	for i in "${G_INCLUDES[@]}"; do
+		out="$out -I$i"
+	done
+	echo "$out"
+}
+#Usage: cf_add_output_lib <name> <path>
+cf_add_output_lib() {
+	OUT_LIBS+=("$1")
+	OUT_LIBS_PATHS+=("$(realpath "$2")")
+}
+#Usage: cf_add_output_lib <path>
+cf_add_output_include() {
+	OUT_INCLUDES+=("$(realpath "$1")")
+}
 
-printf "clean:\n\t\t\t%s %s\n\n" '$(RM)' '$(OBJS)' >> config.mk
-printf "fclean:\tclean\n\t\t\t%s %s\n\n" '$(RM)' '$(NAME)' >> config.mk
-printf "re:\t\t\tfclean all\n\n" >> config.mk
 
-printf ".PHONY:\t\t all clean fclean re\n" >> config.mk
+#Target
+cf_begin_target() {
+	if [ -n "$TARGET_NAME" ]; then
+		cf_error "already in a target scope"
+		return 1
+	fi
+	TARGET_NAME="$1"
+	CFLAGS=()
+	INCLUDES=()
+	LIBS=()
+	LIBS_PATHS=()
+	SRCS=()
+	OBJS=()
+	IMPORTS=()
+	IMPORTS_INCLUDES=()
+	IMPORTS_LIBS=()
+	IMPORTS_LIBS_PATHS=()
+}
 
+_chk_target_scope() {
+	if [ -z "$TARGET_NAME" ]; then
+		cf_error "not in a target scope" 2
+		exit 1
+	fi
+}
+
+#Target setters
+#Usage: cf_add_cflag "-flag"
+cf_add_cflag() {
+	_chk_target_scope
+	CFLAGS+=("$1")
+}
+cf_fmt_cflags() {
+	_chk_target_scope
+	echo "${CFLAGS[@]}"
+}
+
+#Usage: cf_add_include <path>
+cf_add_include() {
+	_chk_target_scope
+	INCLUDES+=("$1")
+}
+cf_fmt_includes() {
+	_chk_target_scope
+	out=""
+	for i in "${INCLUDES[@]}"; do
+		out="$out -I$i"
+	done
+	echo "$out"
+}
+cf_fmt_imported_includes() {
+	_chk_target_scope
+	out=""
+	for i in "${IMPORTS_INCLUDES[@]}"; do
+		out="$out -I$i"
+	done
+	echo "$out"
+}
+
+#Usage: cf_add_raw_lib_path <path>
+cf_add_raw_lib_path() {
+	_chk_target_scope
+	LIBS_PATHS+=("$1")
+}
+cf_fmt_libs_paths() {
+	_chk_target_scope
+	out=""
+	for l in "${LIBS_PATHS[@]}"; do
+		out="$out -L$l"
+	done
+	echo "$out"
+}
+cf_fmt_imported_libs_paths() {
+	_chk_target_scope
+	out=""
+	for l in "${IMPORTS_LIBS_PATHS[@]}"; do
+		out="$out -L$l"
+	done
+	echo "$out"
+}
+
+#Usage: cf_add_raw_lib <library name>
+cf_add_raw_lib() {
+	_chk_target_scope
+	LIBS+=("$1")
+}
+cf_fmt_libs() {
+	_chk_target_scope
+	out=""
+	for l in "${LIBS[@]}"; do
+		out="$out -l""${l#'lib'}"
+	done
+	echo "$out"
+}
+cf_fmt_imported_libs() {
+	_chk_target_scope
+	out=""
+	for l in "${IMPORTS_LIBS[@]}"; do
+		out="$out -l""${l#'lib'}"
+	done
+	echo "$out"
+}
+
+#Usage: cf_add_pkg <path>
+cf_add_pkg() {
+	_chk_target_scope
+	path="$1"
+	if [[ ! -f "$path/configure" ]]; then
+        echo "$_OWN_NAME: $path: no suitable configure"
+        return 1
+    fi
+
+	set +e
+	output=$("$path/configure" --pkg-config 2>&1)
+	ret=$?
+	set -e
+    if [ $ret -ne 0 ]; then
+        echo "$_OWN_NAME: $path: couldn't execute configure --pkg-config"
+        return 1
+    fi
+
+	IMPORTS+=("$path")
+    IMPORTS_INCLUDES+=($(echo "$output" | grep -oP '(?<=INCLUDES=).*'))
+    IMPORTS_LIBS+=($(echo "$output" | grep -oP '(?<=LIBS=).*'))
+    IMPORTS_LIBS_PATHS+=($(echo "$output" | grep -oP '(?<=LIBS_PATHS=).*'))
+}
+
+cf_add_srcs() {
+	_chk_target_scope
+	SRCS+=($1)
+}
+
+#Usage: cf_begin_rule <rule name> [--prereq <rule name>]
+cf_begin_rule() {
+	_chk_target_scope
+
+	if [ -z "$1" ]; then
+		cf_error "empty rule name"
+		return 1
+	fi
+
+	local prereqs=()
+	local positionals=()
+	local rule_name="$1"
+	cf_append "$rule_name: "
+	shift
+	while [[ $# -gt 0 ]]; do
+	    case $1 in
+			--prereq)
+				prereqs+=("$2")
+				shift
+				shift
+				;;
+	        -*)
+	            echo "Unknown option $1"
+	            return 1
+	            ;;
+	        *)
+	            positionals+=("$1")
+	            shift
+	            ;;
+		esac
+	done
+
+	cf_append "$(join " " "${prereqs[@]}")\n"
+	INDENT=$((INDENT+1))
+	RULE_NAME=$rule_name
+}
+_chk_rule_scope() {
+	if [ -z "$RULE_NAME" ]; then
+		cf_error "not in a rule scope" 2
+		exit 1
+	fi
+}
+#Usage: cf_end_rule [phony]
+cf_end_rule() {
+	_chk_target_scope
+	_chk_rule_scope
+
+	local rule_name=$RULE_NAME
+	RULE_NAME=""
+	INDENT=$((INDENT-1))
+	if [ -n "$1" ]; then
+		cf_append "PHONY: %s\n" "$rule_name"
+	fi
+	cf_append "\n"
+}
+
+cf_end_target() {
+	_chk_target_scope
+
+	for i in "${!SRCS[@]}"; do
+		base_name=$(basename "${SRCS[i]%.c}")
+		OBJS+=("$OBJS_PATH/$base_name.o")
+	done
+
+	if [ "$MODE" == "make" ]; then
+		cf_append ".DEFAULT_GOAL=all\n"
+		cf_append "NAME=%s\n" "$TARGET_NAME"
+		cf_append "CFLAGS=%s\n" "$(cf_fmt_cflags)"
+		cf_append "INCLUDES=%s %s\n" "$(cf_fmt_includes)" "$(cf_fmt_imported_includes)"
+		cf_append "LIBS=%s %s\n" "$(cf_fmt_libs)" "$(cf_fmt_imported_libs)"
+		cf_append "LIBS_PATHS=%s %s\n" "$(cf_fmt_libs_paths)" "$(cf_fmt_imported_libs_paths)"
+		cf_append "RM=%s\n" "$RM"
+		cf_append "CC=%s\n" "$CC"
+		cf_append "SRCS=%s\n" "${SRCS[*]}"
+		cf_append "OBJS=%s\n" "${OBJS[*]}"
+
+		all_pkg_rules=()
+		for p in "${IMPORTS[@]}"; do
+			pkg_name="_$(basename "$p")"
+			all_pkg_rules+=("--prereq" "$pkg_name")
+			cf_begin_rule "$pkg_name"
+				cf_append '$(MAKE) -C %s\n' "$p"
+			cf_end_rule phony
+		done
+
+		cf_begin_rule "packages" "${all_pkg_rules[@]}"
+		cf_end_rule phony
+
+		cf_begin_rule "all" \
+			--prereq "objs" \
+			--prereq '$(NAME)'
+		cf_end_rule phony
+
+		cf_begin_rule "objs"
+			cf_append "mkdir -p %s\n" "$OBJS_PATH"
+		cf_end_rule
+
+		cf_begin_rule "clean"
+			cf_append '$(RM) $(OBJS)\n'
+		cf_end_rule phony
+
+		cf_begin_rule "fclean" \
+			--prereq "clean"
+			cf_append '$(RM) $(NAME)\n'
+		cf_end_rule phony
+
+		cf_begin_rule "re" \
+			--prereq "fclean" \
+			--prereq 'all'
+		cf_end_rule phony
+
+		for i in "${!SRCS[@]}"; do
+			src="${SRCS[$i]}"
+			obj="${OBJS[$i]}"
+
+			cf_begin_rule "$obj" --prereq "$src"
+				cf_append '$(CC) $(CFLAGS) $(INCLUDES) -c %s -o %s\n' "$src" "$obj"
+				if [[ "$COVERAGE" == "true" ]]; then
+					cf_append "mv %s %s\n" "${OBJS[$i]%.o}.gcno" "$(dirname "$src")"
+				fi
+			cf_end_rule
+		done
+
+	elif [ "$MODE" == "config" ]; then
+	    printf "INCLUDES=%s\n" "${OUT_INCLUDES[@]}"
+	    printf "LIBS=%s %s\n" "${OUT_LIBS[@]}" "${LIBS[@]}"
+	    printf "LIBS_PATHS=%s\n" "${OUT_LIBS_PATHS[@]}" "${LIBS_PATHS[@]}"
+	else
+		printf "{\n"
+		if [ $_N -eq 0 ]; then
+			printf "\t\"%s\": {\n" "$TARGET_NAME"
+		else
+			printf ",\n\t\"%s\": {\n" "$TARGET_NAME"
+		fi
+		_N=1
+
+		printf "\t\t\"CFLAGS\": ["
+		if [ -n "${CFLAGS[0]}" ]; then
+			printf "\"%s\"" "${CFLAGS[0]}"
+			for i in "${CFLAGS[@]:1}"; do printf ",\"%s\"" "$i"; done
+		fi
+		printf "],\n"
+
+		printf "\t\t\"INCLUDES\": ["
+		if [ -n "${INCLUDES[0]}" ]; then
+			printf "\"%s\"" "${INCLUDES[0]}"
+			for i in "${INCLUDES[@]:1}"; do printf ",\"%s\"" "$i"; done
+		fi
+		printf "],\n"
+
+		printf "\t\t\"LIBS\": ["
+		if [ -n "${LIBS[0]}" ]; then
+			printf "\"%s\"" "${LIBS[0]}"
+			for i in "${LIBS[@]:1}"; do printf ",\"%s\"" "$i"; done
+		fi
+		printf "],\n"
+
+		printf "\t\t\"LIBS_PATHS\": ["
+		if [ -n "${LIBS_PATHS[0]}" ]; then
+			printf "\"%s\"" "${LIBS_PATHS[0]}"
+			for i in "${LIBS_PATHS[@]:1}"; do printf ",\"%s\"" "$i"; done
+		fi
+		printf "],\n"
+
+		printf "\t\t\"SRCS\": ["
+		if [ -n "${SRCS[0]}" ]; then
+			printf "\"%s\"" "${SRCS[0]}"
+			for i in "${SRCS[@]:1}"; do printf ",\"%s\"" "$i"; done
+		fi
+		printf "],\n"
+
+		printf "\t\t\"OBJS\": ["
+		if [ -n "${OBJS[0]}" ]; then
+			printf "\"%s\"" "${OBJS[0]}"
+			for i in "${OBJS[@]:1}"; do printf ",\"%s\"" "$i"; done
+		fi
+		printf "]\n"
+		
+		printf "\t}\n"
+		printf "}"
+	fi
+
+	TARGET_NAME=""
+}
+
+cf_run() {
+	args=()
+	for arg in "$@"; do
+	    if [[ "$arg" == "--pkg-config" ]]; then
+	        MODE="config"
+	    elif [[ "$arg" == "--pkg-json" ]]; then
+	        MODE="json"
+	    else
+	        args+=("$arg")
+	    fi
+	done
+
+	if [ "$MODE" == "make" ]; then
+		echo -n > $OUTPUT_FILE
+	fi
+
+	configure "${args[@]}"
+
+	if [ "$MODE" == "json" ]; then echo; fi
+}
+#===================================================
+
+configure() {
+
+	cf_begin_target "libft.a"
+		cf_add_cflag "-fPIC"
+		cf_add_cflag "-Wall"
+		cf_add_cflag "-Wextra"
+		cf_add_cflag "-Wno-unknown-pragmas"
+
+		cf_add_raw_lib "libm"
+		cf_add_output_include "./"
+		cf_add_output_lib "libft" "./"
+
+		cf_add_include "./"
+		cf_add_include "./srcs/"
+
+		cf_add_srcs "$(find "./srcs" -type f -name '*.c' -not -name "inflate_block*")"
+	cf_end_target
+}
+
+cf_run "$@"

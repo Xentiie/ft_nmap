@@ -5,12 +5,10 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/02/11 19:42:34 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/10 00:49:13 by reclaire         ###   ########.fr       */
+/*   Created: 2024/11/06 01:46:29 by reclaire          #+#    #+#             */
+/*   Updated: 2024/11/06 01:46:30 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
-
-//TODO: check for VAOPT
 
 #ifndef LIBFT_MACROS_H
 # define LIBFT_MACROS_H

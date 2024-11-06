@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/14 11:07:17 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/05 17:06:44 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/06 03:30:31 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -67,8 +67,11 @@ Takes care of error messages
 bool address_iterator_ingest(AddressIterator it, const_string addr_str);
 
 Address *address_iterator_get_array(AddressIterator it, U32 *len);
+void address_iterator_reset(AddressIterator it);
 void address_reset(Address *addr);
 bool address_next(Address *addr);
+
+U64 addr_iterations_count(Address *addr);
 
 /*
 Returns NULL when no more address

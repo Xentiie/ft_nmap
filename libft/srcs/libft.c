@@ -5,8 +5,8 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/01/15 04:01:02 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/05 17:27:29 by reclaire         ###   ########.fr       */
+/*   Created: 2024/11/06 01:49:04 by reclaire          #+#    #+#             */
+/*   Updated: 2024/11/06 01:49:11 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,8 +19,8 @@
 #endif
 
 S32 ft_argc = -1;
-const_string *ft_argv = NULL;
-const_string *ft_env = NULL;
+string *ft_argv = NULL;
+string *ft_env = NULL;
 
 S32 *__ft_errno_location()
 {

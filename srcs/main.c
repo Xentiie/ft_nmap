@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/05 17:09:26 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/06 03:58:56 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,9 @@
 #include "libft/time.h"
 #include "libft/socket.h"
 #include "libft/ansi.h"
+
+#define FT_NMAP_VERSION_MAJOR 1
+#define FT_NMAP_VERSION_MINOR 0
 
 #ifndef __USE_MISC
 #define __USE_MISC 1
@@ -60,6 +63,50 @@ static const t_long_opt long_opts[] = {
 };
 
 static void print_help();
+
+static void find_service(int port, const char *protocol)
+{
+	FILE *file = fopen("/etc/services", "r");
+	if (!file)
+	{
+		perror("Impossible d'ouvrir /etc/services");
+		exit(1);
+	}
+
+	char line[256];
+	while (fgets(line, sizeof(line), file))
+	{
+		// Ignorer les commentaires ou les lignes vides
+		if (line[0] == '#' || strlen(line) < 2)
+		{
+			continue;
+		}
+
+		char service[50], proto[10];
+		int file_port;
+		char *comment_position = strchr(line, '#'); // Pour supprimer les commentaires
+
+		// Supprimer le commentaire si présent
+		if (comment_position)
+		{
+			*comment_position = '\0'; // Terminer la ligne avant le commentaire
+		}
+
+		// Extraire le nom du service, le numéro de port et le protocole
+		if (sscanf(line, "%49s %d/%9s", service, &file_port, proto) == 3)
+		{
+			if (file_port == port && strcmp(proto, protocol) == 0)
+			{
+				ft_printf("%s\n", service);
+				fclose(file);
+				return;
+			}
+		}
+	}
+
+	printf("Service non trouvé pour le port %d/%s\n", port, protocol);
+	fclose(file);
+}
 
 int main()
 {
@@ -126,7 +173,7 @@ int main()
 			return 1;
 		}
 
-		while ((opt = ft_getopt_long(ft_argc, ft_argv, "f:hi:I:p:s:S:t:w:", long_opts, NULL)) != -1)
+		while ((opt = ft_getopt_long(ft_argc, (const_string *)ft_argv, "f:hi:I:p:s:S:t:w:", long_opts, NULL)) != -1)
 		{
 			switch (opt)
 			{
@@ -360,10 +407,15 @@ int main()
 		goto exit_err;
 	}
 
+	time_t rawtime;
+	struct tm *timeinfo;
+	time(&rawtime);
+	timeinfo = localtime(&rawtime);
+	strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M", timeinfo);
+	ft_printf("Starting %s %d.%d at %s\n", ft_argv[0], FT_NMAP_VERSION_MAJOR, FT_NMAP_VERSION_MINOR, buf);
+
 	scan_to_str(g_scans, buf, sizeof(buf));
-	printf("Ports: %u-%u\n", ports_min, ports_max);
-	printf("Thread count: %u\n", thread_count);
-	printf("Scan method: %s\n", buf);
+	ft_printf("default ports range:%u-%u   %u threads  scans:%s\n", ports_min, ports_max, thread_count, buf);
 
 	if (timeout_flt < 0.1f)
 		printf("Warning: timeout of %f is probably not enough\n", timeout_flt);
@@ -401,7 +453,62 @@ int main()
 		free(threads);
 	}
 
-	address_iterator_results(it);
+	{ /* output */
+		struct servent *servent;
+		char buf[40];
+		U32 closed_cnt;
+		ScanAddress dummy_addr;
+		Address *addr;
+		U32 results;
+
+		closed_cnt = 0;
+		address_iterator_reset(it);
+		while (address_iterator_next(it, &dummy_addr))
+		{
+			addr = dummy_addr.addr;
+
+			ft_printf("Begin scan report for %s\n", addr->source_str);
+
+			ft_printf("PORT        STATE            SERVICE\n");
+			//ft_printf("65535/tcp opened|filtered  SERVICE\n");
+			while (address_next(addr))
+			{
+				results = addr->results[addr_iterations_count(addr)];
+
+				for (U8 s = 1; s < g_scans + 1; s <<= 1)
+				{
+					if (!(g_scans & s))
+						continue;
+
+					scan_to_str(s, buf, sizeof(buf));
+
+					if (get_result(s, results) == R_OPEN)
+					{
+						ft_printf("%-11u %-17s", range_val(addr->port), "opened");
+
+						//find_service(range_val(addr->port), "tcp");
+						servent = getservbyport(htons(range_val(addr->port)), s == S_UDP ? "udp" : "tcp");
+						if (servent == NULL)
+							ft_printf("unknown\n");
+						else
+							ft_printf("%s\n", servent->s_name);
+
+						// get_service_version(it->results[i].dstaddr,it->results[i].port );
+					}
+					else
+						closed_cnt += 1;
+				}
+			}
+
+			if (g_scans & S_SYN)
+				ft_printf("Not shown: %d: closed TCP ports (reset)\n\n", closed_cnt);
+			else if (g_scans & S_XMAS)
+				ft_printf("Not shown: %d: filtered TCP ports (no response)\n\n", closed_cnt);
+			else
+				ft_printf("Nombre de ports fermes: %d \n", closed_cnt);
+		}
+	}
+
 	address_iterator_destroy(it);
 	return 0;
 exit_err:

@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 01:04:08 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/05 17:47:26 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/06 03:59:19 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,15 +17,14 @@
 #include "libft/io.h"
 #include "libft/ansi.h"
 
-#include <unistd.h>
 
 #include "address_iterator.h"
 #include "ft_nmap.h"
 
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
 #include <regex.h>
 #include <pthread.h>
 
@@ -64,8 +63,8 @@ typedef struct s_addr_iterator
 	pthread_mutex_t global_lock;
 	pthread_mutex_t progress_lock;
 	pthread_cond_t progress_cond;
-
 } *AddressIterator;
+
 
 static U32 dns_resolve(const_string addr)
 {
@@ -73,15 +72,15 @@ static U32 dns_resolve(const_string addr)
 	struct addrinfo *res;
 	struct addrinfo *ptr;
 	U32 out_addr;
-	S32 i;
+	S32 ret;
 
 	hints = (struct addrinfo){0};
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 
-	if ((i = getaddrinfo(addr, NULL, &hints, &res)) != 0)
+	if ((ret = getaddrinfo(addr, NULL, &hints, &res)) != 0)
 	{
-		ft_fprintf(ft_fstderr, "%s: %s: %s\n", ft_argv[0], addr, gai_strerror(i));
+		ft_fprintf(ft_fstderr, "%s: %s: %s\n", ft_argv[0], addr, gai_strerror(ret));
 		ft_errno = FT_ESYSCALL;
 		return 0;
 	}
@@ -112,7 +111,7 @@ static U64 addr_iterations_total(Address *addr)
 	return total;
 }
 
-static U64 addr_iterations_count(Address *addr)
+U64 addr_iterations_count(Address *addr)
 {
 	U64 total;
 
@@ -418,6 +417,13 @@ bool address_next(Address *addr)
 	return TRUE;
 }
 
+void address_iterator_reset(AddressIterator it)
+{
+	for (U32 i = 0; i < it->addrs_n; i++)
+		address_reset(&it->addrs[i]);
+	it->addr_curr = 0;
+}
+
 bool address_iterator_next(AddressIterator it, ScanAddress *out)
 {
 	Address *addr;
@@ -524,8 +530,16 @@ U32 address_get_src_ip(Address *addr)
 
 void address_iterator_set_result(ScanAddress addr, U32 results)
 {
-	ft_printf("%lu\n", addr_iterations_count(addr.addr));
-	addr.addr->results[addr_iterations_count(addr.addr)] = results;
+	Address dummyaddr;
+
+	ft_memcpy(&dummyaddr, addr.addr, sizeof(Address));
+	range_val(dummyaddr.ip[0]) = addr.dstaddr & 0xFF;
+	range_val(dummyaddr.ip[1]) = (addr.dstaddr >> 8) & 0xFF;
+	range_val(dummyaddr.ip[2]) = (addr.dstaddr >> 16) & 0xFF;
+	range_val(dummyaddr.ip[3]) = (addr.dstaddr >> 24) & 0xFF;
+	range_val(dummyaddr.port) = addr.port;
+
+	addr.addr->results[addr_iterations_count(&dummyaddr)] = results;
 }
 
 Address *address_iterator_get_array(AddressIterator it, U32 *len)
@@ -584,105 +598,4 @@ static void get_service_version(uint32_t ip_address, int port)
 
 	// Fermer la connexion
 	close(sockfd);
-}
-
-static const_string get_service_name(U16 port, const_string protocol)
-{
-	static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-	struct servent *service;
-	string out;
-
-	pthread_mutex_lock(&lock);
-	if ((service = getservbyport(htons(port), protocol)) != NULL)
-		out = service->s_name;
-	out = "Unknown service";
-	pthread_mutex_unlock(&lock);
-	return out;
-}
-
-static void find_service(int port, const char *protocol)
-{
-	FILE *file = fopen("/etc/services", "r");
-	if (!file)
-	{
-		perror("Impossible d'ouvrir /etc/services");
-		exit(1);
-	}
-
-	char line[256];
-	while (fgets(line, sizeof(line), file))
-	{
-		// Ignorer les commentaires ou les lignes vides
-		if (line[0] == '#' || strlen(line) < 2)
-		{
-			continue;
-		}
-
-		char service[50], proto[10];
-		int file_port;
-		char *comment_position = strchr(line, '#'); // Pour supprimer les commentaires
-
-		// Supprimer le commentaire si présent
-		if (comment_position)
-		{
-			*comment_position = '\0'; // Terminer la ligne avant le commentaire
-		}
-
-		// Extraire le nom du service, le numéro de port et le protocole
-		if (sscanf(line, "%49s %d/%9s", service, &file_port, proto) == 3)
-		{
-			if (file_port == port && strcmp(proto, protocol) == 0)
-			{
-				ft_printf("%s\n", service);
-				fclose(file);
-				return;
-			}
-		}
-	}
-
-	printf("Service non trouvé pour le port %d/%s\n", port, protocol);
-	fclose(file);
-}
-
-void address_iterator_results(AddressIterator it)
-{
-	char buf[40];
-	int count = 0;
-
-	for (U32 i = 0; i < it->addrs_n; i++)
-	{
-		Address *addr = &it->addrs[i];
-		address_reset(addr);
-
-		ft_printf("PORT\tSTATE\tSERVICE\n");
-		while (address_next(addr))
-		{
-			U32 result = addr->results[addr_iterations_count(addr)];
-
-			for (U8 s = 1; s < g_scans + 1; s <<= 1)
-			{
-				if (!(g_scans & s))
-					continue;
-
-				scan_to_str(s, buf, sizeof(buf));
-
-				if (get_result(s, result) == R_OPEN)
-				{
-					ft_printf("%u \t OPEN\t ", range_val(addr->port));
-					// get_service_version(it->results[i].dstaddr,it->results[i].port );
-					find_service(range_val(addr->port), "tcp");
-					// ft_printf(" service :%s \n",get_service_name(it->results[i].port, "TCP"));
-				}
-				else
-					count += 1;
-			}
-		}
-		// printf("g san = %u \n", g_scans);
-		if (g_scans & S_SYN)
-			ft_printf("Not show : %d : closed tcp port (reset) \n\n ", count);
-		else if (g_scans & S_XMAS)
-			ft_printf("Not show : %d : filtred TCP PORT no response \n\n ", count);
-		else
-			ft_printf("Nombre de port fermes : %d \n", count);
-	}
 }

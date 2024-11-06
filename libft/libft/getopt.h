@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/02/07 01:30:07 by reclaire          #+#    #+#             */
-/*   Updated: 2024/10/09 17:08:34 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/06 01:45:57 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,7 +36,7 @@ extern const_string ft_optarg;
 typedef struct s_long_opt
 {
 	string name;
-	S32 has_argument;
+	S32 has_argument; /* can be either `no_argument` (0), `required_argument` (1), or `optional_argument` (2) */
 	S32 *flag_ptr;
 	S32 flag_value;
 } t_long_opt;
