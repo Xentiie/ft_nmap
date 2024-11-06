@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/06 13:20:37 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/06 18:26:38 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,7 +55,6 @@ static const t_long_opt long_opts[] = {
 	{"scan", TRUE, NULL, 'S'},
 	{"timeout", TRUE, NULL, 'w'},
 	{"ttl", TRUE, NULL, 't'},
-	{"no-colors", FALSE, NULL, 1000},
 	{0},
 };
 
@@ -120,7 +119,6 @@ int main()
 		g_ttl = 64;
 		g_scans = S_ALL;
 		g_use_custom_interface = FALSE;
-		g_colored_output = TRUE;
 
 		if (UNLIKELY(regcomp(&range_reg, range_reg_src, REG_EXTENDED) != 0))
 		{
@@ -358,12 +356,14 @@ int main()
 		goto exit_err;
 	}
 
-	time_t rawtime;
-	struct tm *timeinfo;
-	time(&rawtime);
-	timeinfo = localtime(&rawtime);
-	strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M", timeinfo);
-	ft_printf("Starting %s %d.%d at %s\n", ft_argv[0], FT_NMAP_VERSION_MAJOR, FT_NMAP_VERSION_MINOR, buf);
+	{
+		time_t rawtime;
+		struct tm *timeinfo;
+		time(&rawtime);
+		timeinfo = localtime(&rawtime);
+		strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M", timeinfo);
+		ft_printf("Starting %s %d.%d at %s\n", ft_argv[0], FT_NMAP_VERSION_MAJOR, FT_NMAP_VERSION_MINOR, buf);
+	}
 
 	scan_to_str(g_scans, buf, sizeof(buf));
 	ft_printf("default ports range:%u-%u   %u threads  scans:%s\n", ports_min, ports_max, thread_count, buf);
@@ -442,7 +442,6 @@ int main()
 							}
 							ft_printf("%-11u %-17s", range_val(addr->port), "opened");
 
-							// find_service(range_val(addr->port), "tcp");
 							servent = getservbyport(htons(range_val(addr->port)), s == S_UDP ? "udp" : "tcp");
 							if (servent == NULL)
 								ft_printf("unknown\n");
@@ -527,50 +526,6 @@ static void get_service_version(uint32_t ip_address, int port)
 
 	// Fermer la connexion
 	close(sockfd);
-}
-
-static void find_service(int port, const char *protocol)
-{
-	FILE *file = fopen("/etc/services", "r");
-	if (!file)
-	{
-		perror("Impossible d'ouvrir /etc/services");
-		exit(1);
-	}
-
-	char line[256];
-	while (fgets(line, sizeof(line), file))
-	{
-		// Ignorer les commentaires ou les lignes vides
-		if (line[0] == '#' || strlen(line) < 2)
-		{
-			continue;
-		}
-
-		char service[50], proto[10];
-		int file_port;
-		char *comment_position = strchr(line, '#'); // Pour supprimer les commentaires
-
-		// Supprimer le commentaire si présent
-		if (comment_position)
-		{
-			*comment_position = '\0'; // Terminer la ligne avant le commentaire
-		}
-
-		// Extraire le nom du service, le numéro de port et le protocole
-		if (sscanf(line, "%49s %d/%9s", service, &file_port, proto) == 3)
-		{
-			if (file_port == port && strcmp(proto, protocol) == 0)
-			{
-				ft_printf("%s\n", service);
-				fclose(file);
-				return;
-			}
-		}
-	}
-
-	printf("Service non trouvé pour le port %d/%s\n", port, protocol);
-	fclose(file);
 }
 
 static void print_help()

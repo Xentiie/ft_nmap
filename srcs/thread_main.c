@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/13 16:11:11 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/06 13:10:55 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/06 17:23:46 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -188,7 +188,6 @@ void *run_test(AddressIterator it)
 
 		if (g_scans & S_UDP)
 		{
-
 			if (UNLIKELY((sock = create_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == (filedesc)-1) ||
 				UNLIKELY((icmp_sock = create_privileged_socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) == (filedesc)-1))
 				return NULL;

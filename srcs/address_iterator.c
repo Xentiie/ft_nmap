@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 01:04:08 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/06 13:10:28 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/06 17:23:37 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -67,14 +67,27 @@ typedef struct s_addr_iterator
 static void it_lock(AddressIterator it);
 static void it_unlock(AddressIterator it);
 
-U64 address_iterations_cnt(Address *addr)
+U64 address_iterations_cnt(Address *address)
 {
-	U64 total;
+    U16 ip_diffs[4];
+    U16 ip_iterations[4];
+    U32 port_diff;
+    U32 port_iterations;
 
-	total = range_val(addr->port) - range_min(addr->port) + 1;
-	for (U8 i = 0; i < 4; i++)
-		total *= range_val(addr->ip[i]) - range_min(addr->ip[i]) + 1;
-	return total - 1;
+    for (U8 i = 0; i < 4; i++)
+    {
+        ip_iterations[i] = address->ip[i].x - address->ip[i].y;
+        ip_diffs[i] = address->ip[i].z - address->ip[i].y + 1;
+    }
+
+    port_iterations = address->port.x - address->port.y;
+    port_diff = address->port.z - address->port.y + 1;
+
+    return ip_iterations[0] * (ip_diffs[1] * ip_diffs[2] * ip_diffs[3] * port_diff) +
+           ip_iterations[1] * (ip_diffs[2] * ip_diffs[3] * port_diff) +
+           ip_iterations[2] * (ip_diffs[3] * port_diff) +
+           ip_iterations[3] * port_diff +
+           port_iterations;
 }
 
 void address_reset(Address *addr)
