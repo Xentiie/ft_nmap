@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/13 16:11:11 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/07 16:45:19 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/07 17:29:04 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,7 +81,7 @@ static U16 header_flgs[] = {
 void *run_scans(AddressIterator it)
 {
 	const S32 on = 1;
-	U8 buffer[MAX(sizeof(struct iphdr) + sizeof(struct s_tcp_hdr), sizeof(struct iphdr) + sizeof(struct s_icmp_hdr))];
+	U8 buffer[50];
 	ScanAddress addr;				  /* addresse cible */
 	filedesc sock;					  /* socket pour TCP:envoie/recepetion UDP:envoie */
 	filedesc icmp_sock;				  /* socket pour ICMP:reception (UDP) */
@@ -118,7 +118,7 @@ void *run_scans(AddressIterator it)
 		results = 0;
 		for (U8 s = 1; s < g_scans + 1; s <<= 1)
 		{
-			if (!(g_scans & s))
+			if (!(g_scans & s) || s == S_UDP)
 				continue;
 			tcph.flags = header_flgs[__builtin_ctz(s)];
 
@@ -176,7 +176,7 @@ void *run_scans(AddressIterator it)
 			case S_NULL:
 			case S_FIN:
 			case S_XMAS:
-				results |= mk_result(s, !received ? R_OPEN|R_FILTERED : R_CLOSED);
+				results |= mk_result(s, !received ? R_OPEN | R_FILTERED : R_CLOSED);
 				break;
 
 			default:
@@ -188,9 +188,16 @@ void *run_scans(AddressIterator it)
 
 		if (g_scans & S_UDP)
 		{
-			if (UNLIKELY((sock = create_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == (filedesc)-1) ||
+			if (UNLIKELY((sock = create_privileged_socket(AF_INET, SOCK_RAW, IPPROTO_UDP)) == (filedesc)-1) ||
 				UNLIKELY((icmp_sock = create_privileged_socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) == (filedesc)-1))
 				return NULL;
+
+			if (UNLIKELY(setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) == -1))
+			{
+				ft_close(sock);
+				ft_close(icmp_sock);
+				return NULL;
+			}
 
 			if (UNLIKELY(!set_nonblock(sock)) || UNLIKELY(!set_nonblock(icmp_sock)))
 			{
@@ -199,13 +206,29 @@ void *run_scans(AddressIterator it)
 				return NULL;
 			}
 
+			iph.ihl = 5;
+			iph.ver = 4;
+			iph.tos = 0;
+			iph.len = htons(sizeof(struct s_ip_hdr) + sizeof(struct s_udp_hdr));
+			iph.id = htons(unique_id);
+			iph.flgs_frg = 0;
+			iph.ttl = 64;
+			iph.protocol = IPPROTO_UDP;
+			iph.check = 0;
+			iph.srcaddr = addr.srcaddr;
+			iph.dstaddr = addr.dstaddr;
+			iph.check = checksum((U16 *)&iph, sizeof(struct s_ip_hdr));
+
 			udph.srcaddr = htons(unique_id);
 			udph.dstaddr = htons(addr.port);
 			udph.len = htons(sizeof(struct s_udp_hdr));
 			udph.check = 0;
 			// udph->check = checksum(packet, sizeof(t_ip_header) + sizeof(struct udphdr));
 
-			if (sendto(sock, &udph, sizeof(struct s_udp_hdr), 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
+			ft_memcpy(buffer, &iph, sizeof(struct s_ip_hdr));
+			ft_memcpy(buffer + sizeof(struct s_ip_hdr), &udph, sizeof(struct s_udp_hdr));
+
+			if (sendto(sock, buffer, sizeof(struct s_ip_hdr) + sizeof(struct s_udp_hdr) + 1, 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
 			{
 				ft_fprintf(ft_fstderr, "%s: sendto: %s\n", ft_argv[0], ft_strerror2(ft_errno));
 				ft_close(sock);
@@ -274,6 +297,8 @@ void *run_scans(AddressIterator it)
 				ft_close(icmp_sock);
 				return NULL;
 			}
+			ft_close(sock);
+			ft_close(icmp_sock);
 		}
 
 		address_iterator_set_result(addr, results);

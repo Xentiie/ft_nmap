@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/07 16:43:11 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/07 16:54:46 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -453,7 +453,7 @@ int main()
 
 							// get_service_version(it->results[i].dstaddr,it->results[i].port );
 						}
-						else if (get_result(s, results) == R_OPEN | R_FILTERED)
+						else if (get_result(s, results) == (R_OPEN | R_FILTERED))
 							filtered_cnt++;
 						else
 							closed_cnt++;

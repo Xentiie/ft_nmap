@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 16:31:46 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/07 15:58:42 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/07 16:51:03 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,8 +42,8 @@ struct s_ip_hdr
 	U8 ttl;
 	U8 protocol;
 	U16 check; // Header checksum
-	U32 src_addr;
-	U32 dst_addr;
+	U32 srcaddr;
+	U32 dstaddr;
 	/* opts */
 };
 
