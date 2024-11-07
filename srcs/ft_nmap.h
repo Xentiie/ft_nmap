@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 16:31:46 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/06 13:21:05 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/07 15:58:42 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -157,7 +157,7 @@ extern U8 g_ttl;					/* ttl value */
 extern t_time g_timeout;			/* timeout value */
 
 /* threads */
-void *run_test(AddressIterator it);
+void *run_scans(AddressIterator it);
 
 /* utils */
 U16 checksum(U16 *ptr, U64 nbytes);

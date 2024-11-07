@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/06 18:26:38 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/07 15:15:50 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -373,8 +373,9 @@ int main()
 	g_timeout.seconds = timeout_flt;
 	g_timeout.nanoseconds = (timeout_flt - g_timeout.seconds) * 1e6; // microseconds, pas nano
 
+	address_iterator_reset(it);
 	if (thread_count == 0)
-		run_test(it);
+		run_scans(it);
 	else
 	{
 		if (UNLIKELY((threads = malloc(sizeof(pthread_t) * thread_count)) == NULL))
@@ -386,7 +387,7 @@ int main()
 		/* launch threads */
 		for (i = 0; i < thread_count; i++)
 		{
-			if (pthread_create(&threads[i], NULL, (void *(*)(void *))run_test, it) != 0)
+			if (pthread_create(&threads[i], NULL, (void *(*)(void *))run_scans, it) != 0)
 			{
 				for (j = 0; j < i; j++)
 				{

@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   thread_main.c                                      :+:      :+:    :+:   */
+/*   scans_main.c                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/13 16:11:11 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/06 17:23:46 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/06 19:34:39 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,7 +78,7 @@ static U16 header_flgs[] = {
 	0x1050, // ACK SCAN
 };
 
-void *run_test(AddressIterator it)
+void *run_scans(AddressIterator it)
 {
 	const S32 on = 1;
 	U8 buffer[MAX(sizeof(struct iphdr) + sizeof(struct s_tcp_hdr), sizeof(struct iphdr) + sizeof(struct s_icmp_hdr))];
