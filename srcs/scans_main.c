@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/13 16:11:11 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/06 19:34:39 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/07 16:45:19 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -176,7 +176,7 @@ void *run_scans(AddressIterator it)
 			case S_NULL:
 			case S_FIN:
 			case S_XMAS:
-				results |= mk_result(s, !received ? R_OPEN : R_CLOSED);
+				results |= mk_result(s, !received ? R_OPEN|R_FILTERED : R_CLOSED);
 				break;
 
 			default:
@@ -191,14 +191,6 @@ void *run_scans(AddressIterator it)
 			if (UNLIKELY((sock = create_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == (filedesc)-1) ||
 				UNLIKELY((icmp_sock = create_privileged_socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) == (filedesc)-1))
 				return NULL;
-
-			if (setsockopt(icmp_sock, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) < 0)
-			{
-				ft_fprintf(ft_fstderr, "%s: setsockopt IP_HDRINCL: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-				ft_close(sock);
-				ft_close(icmp_sock);
-				return NULL;
-			}
 
 			if (UNLIKELY(!set_nonblock(sock)) || UNLIKELY(!set_nonblock(icmp_sock)))
 			{

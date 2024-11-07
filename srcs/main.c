@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/07 16:19:01 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/07 16:43:11 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -409,6 +409,7 @@ int main()
 		struct servent *servent;
 		char buf[40];
 		U32 closed_cnt;
+		U32 filtered_cnt;
 		ScanAddress dummy_addr;
 		Address *addr;
 		U32 results;
@@ -422,6 +423,7 @@ int main()
 			{
 				pr_header = FALSE;
 				closed_cnt = 0;
+				filtered_cnt = 0;
 				ft_printf("Begin scan report for %s\n", addr_to_str(address_get_dst_ip(addr)));
 				while (range_val(addr->port) <= range_max(addr->port))
 				{
@@ -451,21 +453,19 @@ int main()
 
 							// get_service_version(it->results[i].dstaddr,it->results[i].port );
 						}
+						else if (get_result(s, results) == R_OPEN | R_FILTERED)
+							filtered_cnt++;
 						else
-							closed_cnt += 1;
+							closed_cnt++;
 					}
 
 					range_val(addr->port)++;
 				}
 				if (closed_cnt > 0)
-				{
-					if (g_scans & S_SYN)
-						ft_printf("Not shown: %d: closed TCP ports (reset)\n\n", closed_cnt);
-					else if (g_scans & S_XMAS)
-						ft_printf("Not shown: %d: filtered TCP ports (no response)\n\n", closed_cnt);
-					else
-						ft_printf("Nombre de ports fermes: %d \n", closed_cnt);
-				}
+					ft_printf("Not shown: %d: closed ports (reset)\n", closed_cnt);
+				if (filtered_cnt > 0)
+					ft_printf("Not shown: %d: open|filtered ports (no response)\n", filtered_cnt);
+				ft_printf("\n");
 			} while (address_next(addr));
 		}
 	}
