@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/07 15:15:50 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/07 16:19:01 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -438,10 +438,10 @@ int main()
 						{
 							if (!pr_header)
 							{
-								ft_printf("PORT        STATE            SERVICE\n");
+								ft_printf("SCAN  PORT        STATE            SERVICE\n");
 								pr_header = TRUE;
 							}
-							ft_printf("%-11u %-17s", range_val(addr->port), "opened");
+							ft_printf("%-5s %-11u %-17s", buf, range_val(addr->port), "opened");
 
 							servent = getservbyport(htons(range_val(addr->port)), s == S_UDP ? "udp" : "tcp");
 							if (servent == NULL)
