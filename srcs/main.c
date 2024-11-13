@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/07 17:33:05 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/13 16:53:14 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -535,6 +535,19 @@ static void get_service_version(uint32_t ip_address, int port)
 	close(sockfd);
 }
 
+/*
+
+	{"file", TRUE, NULL, 'f'},
+	{"help", FALSE, NULL, 'h'},
+	{"ip", TRUE, NULL, 'i'},
+	{"interface", TRUE, NULL, 'I'},
+	{"ports", TRUE, NULL, 'p'},
+	{"speedup", TRUE, NULL, 's'},
+	{"scan", TRUE, NULL, 'S'},
+	{"timeout", TRUE, NULL, 'w'},
+	{"ttl", TRUE, NULL, 't'},
+*/
+
 static void print_help()
 {
 	ft_printf(
@@ -549,7 +562,8 @@ Options:\n\
   -I (--interface) <Interface>    interface to use\n\
   -p (--ports) <ports>            port range to scan\n\
   -s (--speedup) <threads>        number of parallel threads to use [1;250]\n\
-  -S (--scan)                     scan method to use. Can be any combination of SYN/NULL/FIN/XMAS/ACK/UDP\n\
-  -t (--timeout) <timeout>        sockets timeout\n",
+  -S (--scan) <scans>             scan method to use. Can be any combination of SYN/NULL/FIN/XMAS/ACK/UDP\n\
+  -w (--timeout) <seconds>        sockets timeout value\n\
+  -t (--ttl) <ttl>                sockets ttl value\n",
 		ft_argv[0]);
 }
