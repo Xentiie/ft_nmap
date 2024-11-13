@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/07 16:54:46 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/07 17:33:05 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -70,6 +70,7 @@ int main()
 	const_string ip_arg;	   /* additional ip address specified by --ip */
 	F32 timeout_flt;		   /* socket timeout */
 	pthread_t *threads;		   /* list of all threads */
+	t_clock clk;
 
 	char buf[30] = {0}; /* pour scan_to_str */
 	t_iv2 term_size;	/* terminal size */
@@ -373,6 +374,9 @@ int main()
 	g_timeout.seconds = timeout_flt;
 	g_timeout.nanoseconds = (timeout_flt - g_timeout.seconds) * 1e6; // microseconds, pas nano
 
+	ft_clk_init(&clk);
+	ft_clk_start(&clk);
+
 	address_iterator_reset(it);
 	if (thread_count == 0)
 		run_scans(it);
@@ -404,6 +408,8 @@ int main()
 			pthread_join(threads[i], NULL);
 		free(threads);
 	}
+	ft_clk_stop(&clk);
+	ft_printf("Done ! Runned %lu scans in %s seconds\n", address_iterator_total(it), ft_clk_fmt_elapsed_str(&clk));
 
 	{ /* output */
 		struct servent *servent;

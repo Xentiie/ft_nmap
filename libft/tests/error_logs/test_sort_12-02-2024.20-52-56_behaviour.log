@@ -1,81 +1,0 @@
-====BEGIN LOG====
-Code: 0
-=================
-TESTS INIT
-FUNCTION BEHAVIOUR TESTS
-original: f d c a 1 b g 2 e 
-f d
-S�+xU O�+xU M�+xU I�+xU Q�+xU K�+xU G�+xU p�+xU g�+xU 
-f c
-O�+xU S�+xU M�+xU I�+xU Q�+xU K�+xU G�+xU p�+xU g�+xU 
-f a
-O�+xU M�+xU S�+xU I�+xU Q�+xU K�+xU G�+xU p�+xU g�+xU 
-f 1
-O�+xU M�+xU I�+xU S�+xU Q�+xU K�+xU G�+xU p�+xU g�+xU 
-f b
-O�+xU M�+xU I�+xU Q�+xU S�+xU K�+xU G�+xU p�+xU g�+xU 
-f g
-O�+xU M�+xU I�+xU Q�+xU K�+xU S�+xU G�+xU p�+xU g�+xU 
-f 2
-O�+xU M�+xU I�+xU Q�+xU K�+xU G�+xU S�+xU p�+xU g�+xU 
-2 e
-O�+xU M�+xU I�+xU Q�+xU K�+xU G�+xU S�+xU p�+xU g�+xU 
-d c
-O�+xU M�+xU I�+xU Q�+xU K�+xU G�+xU S�+xU g�+xU p�+xU 
-d a
-M�+xU O�+xU I�+xU Q�+xU K�+xU G�+xU S�+xU g�+xU p�+xU 
-d 1
-M�+xU I�+xU O�+xU Q�+xU K�+xU G�+xU S�+xU g�+xU p�+xU 
-1 b
-M�+xU I�+xU O�+xU Q�+xU K�+xU G�+xU S�+xU g�+xU p�+xU 
-1 g
-M�+xU I�+xU O�+xU K�+xU Q�+xU G�+xU S�+xU g�+xU p�+xU 
-1 f
-M�+xU I�+xU O�+xU K�+xU G�+xU Q�+xU S�+xU g�+xU p�+xU 
-f e
-M�+xU I�+xU O�+xU K�+xU G�+xU Q�+xU S�+xU g�+xU p�+xU 
-c a
-M�+xU I�+xU O�+xU K�+xU G�+xU Q�+xU S�+xU g�+xU p�+xU 
-c d
-I�+xU M�+xU O�+xU K�+xU G�+xU Q�+xU S�+xU g�+xU p�+xU 
-d b
-I�+xU M�+xU O�+xU K�+xU G�+xU Q�+xU S�+xU g�+xU p�+xU 
-d g
-I�+xU M�+xU K�+xU O�+xU G�+xU Q�+xU S�+xU g�+xU p�+xU 
-d 1
-I�+xU M�+xU K�+xU G�+xU O�+xU Q�+xU S�+xU g�+xU p�+xU 
-1 f
-I�+xU M�+xU K�+xU G�+xU O�+xU Q�+xU S�+xU g�+xU p�+xU 
-a c
-I�+xU M�+xU K�+xU G�+xU O�+xU Q�+xU S�+xU g�+xU p�+xU 
-c b
-I�+xU M�+xU K�+xU G�+xU O�+xU Q�+xU S�+xU g�+xU p�+xU 
-c g
-I�+xU K�+xU M�+xU G�+xU O�+xU Q�+xU S�+xU g�+xU p�+xU 
-c d
-I�+xU K�+xU G�+xU M�+xU O�+xU Q�+xU S�+xU g�+xU p�+xU 
-d 1
-I�+xU K�+xU G�+xU M�+xU O�+xU Q�+xU S�+xU g�+xU p�+xU 
-a b
-I�+xU K�+xU G�+xU M�+xU O�+xU Q�+xU S�+xU g�+xU p�+xU 
-b g
-I�+xU K�+xU G�+xU M�+xU O�+xU Q�+xU S�+xU g�+xU p�+xU 
-b c
-I�+xU G�+xU K�+xU M�+xU O�+xU Q�+xU S�+xU g�+xU p�+xU 
-c d
-I�+xU G�+xU K�+xU M�+xU O�+xU Q�+xU S�+xU g�+xU p�+xU 
-a g
-I�+xU G�+xU K�+xU M�+xU O�+xU Q�+xU S�+xU g�+xU p�+xU 
-a b
-G�+xU I�+xU K�+xU M�+xU O�+xU Q�+xU S�+xU g�+xU p�+xU 
-b c
-G�+xU I�+xU K�+xU M�+xU O�+xU Q�+xU S�+xU g�+xU p�+xU 
-g a
-G�+xU I�+xU K�+xU M�+xU O�+xU Q�+xU S�+xU g�+xU p�+xU 
-a b
-G�+xU I�+xU K�+xU M�+xU O�+xU Q�+xU S�+xU g�+xU p�+xU 
-sorted:   g a b c d 1 f e 2 
-    -> ft_sort string: FAILED
-
-=================
-

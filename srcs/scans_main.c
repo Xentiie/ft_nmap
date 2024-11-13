@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/13 16:11:11 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/07 17:29:04 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/13 16:47:13 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -137,7 +137,7 @@ void *run_scans(AddressIterator it)
 			if (sendto(sock, &tcph, sizeof(tcph), 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
 			{
 				ft_fprintf(ft_fstderr, "%s: sendto: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-				ft_close(sock);
+				close(sock);
 				return NULL;
 			}
 
@@ -184,7 +184,7 @@ void *run_scans(AddressIterator it)
 				break;
 			}
 		}
-		ft_close(sock);
+		close(sock);
 
 		if (g_scans & S_UDP)
 		{
@@ -194,15 +194,15 @@ void *run_scans(AddressIterator it)
 
 			if (UNLIKELY(setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) == -1))
 			{
-				ft_close(sock);
-				ft_close(icmp_sock);
+				close(sock);
+				close(icmp_sock);
 				return NULL;
 			}
 
 			if (UNLIKELY(!set_nonblock(sock)) || UNLIKELY(!set_nonblock(icmp_sock)))
 			{
-				ft_close(sock);
-				ft_close(icmp_sock);
+				close(sock);
+				close(icmp_sock);
 				return NULL;
 			}
 
@@ -228,11 +228,11 @@ void *run_scans(AddressIterator it)
 			ft_memcpy(buffer, &iph, sizeof(struct s_ip_hdr));
 			ft_memcpy(buffer + sizeof(struct s_ip_hdr), &udph, sizeof(struct s_udp_hdr));
 
-			if (sendto(sock, buffer, sizeof(struct s_ip_hdr) + sizeof(struct s_udp_hdr) + 1, 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
+			if (sendto(sock, buffer, sizeof(struct s_ip_hdr) + sizeof(struct s_udp_hdr), 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
 			{
 				ft_fprintf(ft_fstderr, "%s: sendto: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-				ft_close(sock);
-				ft_close(icmp_sock);
+				close(sock);
+				close(icmp_sock);
 				return NULL;
 			}
 
@@ -254,8 +254,8 @@ void *run_scans(AddressIterator it)
 						else
 						{
 							ft_fprintf(ft_fstderr, "%s: recvfrom: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-							ft_close(sock);
-							ft_close(icmp_sock);
+							close(sock);
+							close(icmp_sock);
 							return NULL;
 						}
 					}
@@ -273,8 +273,8 @@ void *run_scans(AddressIterator it)
 						else
 						{
 							ft_fprintf(ft_fstderr, "%s: recvfrom: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-							ft_close(sock);
-							ft_close(icmp_sock);
+							close(sock);
+							close(icmp_sock);
 							return NULL;
 						}
 					}
@@ -293,12 +293,12 @@ void *run_scans(AddressIterator it)
 			else if (UNLIKELY(ret == -1))
 			{
 				ft_fprintf(ft_fstderr, "%s: select: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-				ft_close(sock);
-				ft_close(icmp_sock);
+				close(sock);
+				close(icmp_sock);
 				return NULL;
 			}
-			ft_close(sock);
-			ft_close(icmp_sock);
+			close(sock);
+			close(icmp_sock);
 		}
 
 		address_iterator_set_result(addr, results);
@@ -343,7 +343,7 @@ static filedesc create_privileged_socket(S32 domain, S32 type, S32 protocol)
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &g_timeout, sizeof(g_timeout)) == -1)
 	{
 		ft_fprintf(ft_fstderr, "%s: setsockopt SO_RCVTIMEO: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-		ft_close(sock);
+		close(sock);
 		return -1;
 	}
 
@@ -363,14 +363,14 @@ static filedesc create_socket(S32 domain, S32 type, S32 protocol)
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &g_timeout, sizeof(g_timeout)) == -1)
 	{
 		ft_fprintf(ft_fstderr, "%s: setsockopt SO_RCVTIMEO: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-		ft_close(sock);
+		close(sock);
 		return -1;
 	}
 
 	if (setsockopt(sock, IPPROTO_IP, IP_TTL, &g_ttl, sizeof(g_ttl)) == -1)
 	{
 		ft_fprintf(ft_fstderr, "%s: setsockopt IP_TTL: %s\n", ft_argv[0], ft_strerror2(ft_errno));
-		ft_close(sock);
+		close(sock);
 		return -1;
 	}
 
