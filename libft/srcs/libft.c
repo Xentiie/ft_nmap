@@ -37,7 +37,7 @@ t_file *ft_fstdout;
 t_file *ft_fstderr;
 
 __attribute__((constructor))
-void __init_libft(S32 argc, const_string *argv, const_string *env)
+void __init_libft(S32 argc, string *argv, string *env)
 {
 	ft_argc = argc;
 	ft_argv = argv;

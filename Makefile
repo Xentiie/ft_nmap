@@ -13,9 +13,9 @@
 .DEFAULT_GOAL=all
 NAME=ft_nmap
 CFLAGS=-Wall -Wextra -Wno-unknown-pragmas -g
-INCLUDES= -I./srcs/  -I/home/reclaire/Desktop/ft_nmap/libft
+INCLUDES= -I./srcs/  -I./libft
 LIBS=  -lft -lm
-LIBS_PATHS=  -L/home/reclaire/Desktop/ft_nmap/libft
+LIBS_PATHS=  -L./libft
 RM=rm -rf
 CC=gcc
 SRCS=./srcs/address_utils.c ./srcs/scan_method.c ./srcs/main.c ./srcs/address_iterator.c ./srcs/scans_main.c ./srcs/checksum.c
