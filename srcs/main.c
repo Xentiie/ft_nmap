@@ -6,7 +6,7 @@
 /*   By: reclaire <reclaire@student.42mulhouse.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/09 15:50:03 by reclaire          #+#    #+#             */
-/*   Updated: 2024/11/13 16:53:14 by reclaire         ###   ########.fr       */
+/*   Updated: 2024/11/13 16:55:45 by reclaire         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -560,7 +560,7 @@ Options:\n\
   -h (--help)                     print help and exit\n\
   -i (--ip) <IP address>          ip address to scan\n\
   -I (--interface) <Interface>    interface to use\n\
-  -p (--ports) <ports>            port range to scan\n\
+  -p (--ports) <ports>            port range to scan (in format: -pMin-Max or -pValue, exemple: -p10, -p50-100)\n\
   -s (--speedup) <threads>        number of parallel threads to use [1;250]\n\
   -S (--scan) <scans>             scan method to use. Can be any combination of SYN/NULL/FIN/XMAS/ACK/UDP\n\
   -w (--timeout) <seconds>        sockets timeout value\n\
